@@ -115,6 +115,39 @@ async function fetchItemDataWithRetry(itemId, maxRetries = 3) {
   throw new Error('HTTP_429_EXCEEDED_RETRIES');
 }
 
+// Calculate rolling 24-hour RAP from previous history snapshots
+async function calculateRollingRap(itemId, currentFloor, validPrices) {
+  const past24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: hist } = await db
+    .from('item_history')
+    .select('best_price')
+    .eq('item_id', itemId)
+    .gte('recorded_at', past24h)
+    .not('best_price', 'is', null);
+
+  const priceHistory = (hist || []).map(h => Number(h.best_price)).filter(p => !isNaN(p) && p > 0);
+
+  if (currentFloor) {
+    priceHistory.push(currentFloor);
+  }
+
+  // If history exists over the last 24h, compute rolling average
+  if (priceHistory.length > 0) {
+    const sum = priceHistory.reduce((acc, p) => acc + p, 0);
+    return Math.round(sum / priceHistory.length);
+  }
+
+  // Fallback: If no prior history, compute average of bottom 3 active listings
+  if (validPrices.length > 0) {
+    const bottomSlice = validPrices.slice(0, 3);
+    const sum = bottomSlice.reduce((acc, p) => acc + p, 0);
+    return Math.round(sum / bottomSlice.length);
+  }
+
+  return null;
+}
+
 async function runSync() {
   await loginAndGetCookies();
 
@@ -134,40 +167,36 @@ async function runSync() {
         continue;
       }
 
-      // Diagnostic logging for schema inspection
-      if (id === 1 || id === 243) {
-        console.log(`[DEBUG #${id} Keys]:`, Object.keys(data));
-        console.log(`[DEBUG #${id} Sample]:`, JSON.stringify(data).slice(0, 250));
-      }
-
-      // Support nested (data.item) or root-level item properties
       const item = data.item || (data.name || data.id ? data : null);
 
       if (!item) {
-        console.log(`[Warning] No identifiable item fields found for #${id}`);
         skipCount++;
         await sleep(BASE_DELAY_MS);
         continue;
       }
 
-      // Support nested or top-level listings array
       const listings = Array.isArray(data.listings) 
         ? data.listings 
         : (Array.isArray(item.listings) ? item.listings : []);
 
       // Calculate lowest active floor price
       let bestPrice = null;
+      let validPrices = [];
       if (listings.length > 0) {
-        const validPrices = listings
+        validPrices = listings
           .map(l => Number(l.price))
-          .filter(p => !isNaN(p) && p > 0);
+          .filter(p => !isNaN(p) && p > 0)
+          .sort((a, b) => a - b);
         
         if (validPrices.length > 0) {
-          bestPrice = Math.min(...validPrices);
+          bestPrice = validPrices[0];
         }
       }
 
-      // 1. Upsert Catalog Metadata
+      // Calculate true rolling RAP
+      const computedRap = await calculateRollingRap(item.id || id, bestPrice, validPrices);
+
+      // 1. Upsert Catalog Metadata with calculated RAP
       const { error: itemErr } = await db
         .from('items')
         .upsert({
@@ -177,6 +206,7 @@ async function runSync() {
           item_type: item.item_type || 'Item',
           original_price: item.price != null ? item.price : 0,
           best_price: bestPrice,
+          rap: computedRap || item.price || 0,
           listing_count: listings.length,
           stock: item.stock != null ? item.stock : null,
           total_stock: item.total_stock != null ? item.total_stock : null,
@@ -190,7 +220,7 @@ async function runSync() {
       }
 
       // 2. Append Price Trend Record
-      const { error: histErr } = await db
+      await db
         .from('item_history')
         .insert({
           item_id: item.id || id,
@@ -198,10 +228,6 @@ async function runSync() {
           listing_count: listings.length,
           recorded_at: timestamp
         });
-
-      if (histErr) {
-        console.error(`[Error] Failed to record history for #${id}:`, histErr.message);
-      }
 
       // 3. Refresh Active Serial Copies
       await db
@@ -218,13 +244,10 @@ async function runSync() {
           created_at: timestamp
         }));
 
-        const { error: listErr } = await db.from('active_listings').insert(rows);
-        if (listErr) {
-          console.error(`[Error] Failed to insert active listings for #${id}:`, listErr.message);
-        }
+        await db.from('active_listings').insert(rows);
       }
 
-      console.log(`[Synced] #${item.id || id} - ${item.name} | Floor: ${bestPrice ?? 'None'} | Copies: ${listings.length}`);
+      console.log(`[Synced] #${item.id || id} - ${item.name} | RAP: ${computedRap ?? 'None'} | Floor: ${bestPrice ?? 'None'} | Copies: ${listings.length}`);
       successCount++;
 
     } catch (err) {
