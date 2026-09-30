@@ -1,6 +1,6 @@
 import { supabase } from './db.js';
 
-const getItemUrl = (id) => `https://playvortex.io/api/catalog/${id}`;
+const getItemUrl = (id) => `https://playvortex.io/api/catalog/item/${id}`;
 
 // Fetch a single item from Vortex
 async function fetchVortexItem(itemId) {
