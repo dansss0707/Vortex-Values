@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vortex Values | Rolimon's Style Item Tracker</title>
+  <title>Vortex Values | Item Catalog & Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -207,7 +207,7 @@
     }
 
     td {
-      padding: 1rem 1.25rem;
+      padding: 0.85rem 1.25rem;
       border-bottom: 1px solid rgba(255, 255, 255, 0.04);
       font-size: 0.95rem;
       vertical-align: middle;
@@ -223,31 +223,47 @@
       gap: 1rem;
     }
 
-    .item-avatar {
-      width: 44px;
-      height: 44px;
+    /* Thumbnail styling */
+    .item-thumb-wrapper {
+      width: 52px;
+      height: 52px;
       background: #090d16;
       border: 1px solid var(--card-border);
-      border-radius: 8px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
-      color: var(--text-muted);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
       flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .item-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      image-rendering: -webkit-optimize-contrast;
+      transition: transform 0.2s ease;
+    }
+
+    tr:hover .item-thumb {
+      transform: scale(1.08);
     }
 
     .item-info {
       display: flex;
       flex-direction: column;
-      gap: 0.2rem;
+      gap: 0.25rem;
     }
 
     .item-title {
       font-weight: 700;
       color: #fff;
+      text-decoration: none;
+    }
+
+    .item-title:hover {
+      color: #818cf8;
     }
 
     .badge {
@@ -313,7 +329,6 @@
   </header>
 
   <div class="container">
-    <!-- Top KPI Metrics -->
     <div class="metrics-grid">
       <div class="metric-card">
         <div class="metric-title">Tracked Items</div>
@@ -333,7 +348,6 @@
       </div>
     </div>
 
-    <!-- Filter & Search Controls -->
     <div class="controls-panel">
       <div class="search-box">
         <svg viewBox="0 0 24 24">
@@ -349,7 +363,6 @@
       </div>
     </div>
 
-    <!-- Table -->
     <div class="table-wrapper">
       <table>
         <thead>
@@ -377,15 +390,10 @@
   </div>
 
   <script>
-    // -------------------------------------------------------------
-    // CONFIGURATION: Replace with your project details
-    // -------------------------------------------------------------
+    // Supabase credentials
+    const SUPABASE_URL = 'https://rwuudgyyzlgxxmnqxqhe.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_j7xJC8QrTTMzSMAnDiQKpA_Ndi_qRRx';
 
-
-const SUPABASE_URL = 'https://rwuudgyyzlgxxmnqxqhe.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_j7xJC8QrTTMzSMAnDiQKpA_Ndi_qRRx';
-
-    // Initialize client cleanly without global conflicts
     const { createClient } = window.supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -418,7 +426,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_j7xJC8QrTTMzSMAnDiQKpA_Ndi_qRRx';
         document.getElementById('catalogBody').innerHTML = `
           <tr>
             <td colspan="7" class="empty-state" style="color: var(--red);">
-              Failed to load items. Check your Supabase URL & Anon Key config.
+              Failed to load items. Check database connection.
             </td>
           </tr>
         `;
@@ -437,7 +445,6 @@ const SUPABASE_ANON_KEY = 'sb_publishable_j7xJC8QrTTMzSMAnDiQKpA_Ndi_qRRx';
       const tbody = document.getElementById('catalogBody');
       const query = document.getElementById('searchInput').value.toLowerCase().trim();
 
-      // 1. Filter
       let filtered = rawItems.filter(item => {
         const matchesQuery = item.name.toLowerCase().includes(query) || item.id.toString() === query;
         if (!matchesQuery) return false;
@@ -447,7 +454,6 @@ const SUPABASE_ANON_KEY = 'sb_publishable_j7xJC8QrTTMzSMAnDiQKpA_Ndi_qRRx';
         return true;
       });
 
-      // 2. Sort
       filtered.sort((a, b) => {
         let valA = a[currentSort.column] ?? 0;
         let valB = b[currentSort.column] ?? 0;
@@ -460,37 +466,52 @@ const SUPABASE_ANON_KEY = 'sb_publishable_j7xJC8QrTTMzSMAnDiQKpA_Ndi_qRRx';
         return 0;
       });
 
-      // 3. Render
       if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No matching items found.</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = filtered.map(item => `
-        <tr>
-          <td class="price-num" style="color: var(--text-muted); font-size: 0.85rem;">#${item.id}</td>
-          <td>
-            <div class="item-cell">
-              <div class="item-avatar">${item.id}</div>
-              <div class="item-info">
-                <div class="item-title">${escapeHtml(item.name)}</div>
-                <div>
-                  ${item.limited 
-                    ? '<span class="badge badge-limited">Limited</span>' 
-                    : '<span class="badge badge-standard">Standard</span>'}
+      tbody.innerHTML = filtered.map(item => {
+        const thumbUrl = `https://playvortex.io/api/catalog/thumbnail/${item.id}`;
+        return `
+          <tr>
+            <td class="price-num" style="color: var(--text-muted); font-size: 0.85rem;">#${item.id}</td>
+            <td>
+              <div class="item-cell">
+                <div class="item-thumb-wrapper">
+                  <img 
+                    src="${thumbUrl}" 
+                    alt="${escapeHtml(item.name)}" 
+                    class="item-thumb" 
+                    loading="lazy"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                  />
+                  <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-family:'JetBrains Mono'; color:var(--text-muted); font-size:0.75rem;">
+                    #${item.id}
+                  </div>
+                </div>
+                <div class="item-info">
+                  <a href="https://playvortex.io/catalog/${item.id}" target="_blank" rel="noopener" class="item-title">
+                    ${escapeHtml(item.name)}
+                  </a>
+                  <div>
+                    ${item.limited 
+                      ? '<span class="badge badge-limited">Limited</span>' 
+                      : '<span class="badge badge-standard">Standard</span>'}
+                  </div>
                 </div>
               </div>
-            </div>
-          </td>
-          <td><span style="color: var(--text-muted);">${escapeHtml(item.item_type || 'Item')}</span></td>
-          <td class="price-num">${item.original_price ? item.original_price.toLocaleString() : 'Free / N/A'}</td>
-          <td class="price-num floor-price">
-            ${item.best_price ? `${item.best_price.toLocaleString()} Tokens` : '<span style="color: var(--text-muted);">-</span>'}
-          </td>
-          <td class="price-num">${item.listing_count || 0}</td>
-          <td class="price-num">${item.stock || (item.total_stock || '∞')}</td>
-        </tr>
-      `).join('');
+            </td>
+            <td><span style="color: var(--text-muted);">${escapeHtml(item.item_type || 'Item')}</span></td>
+            <td class="price-num">${item.original_price ? item.original_price.toLocaleString() : 'Free / N/A'}</td>
+            <td class="price-num floor-price">
+              ${item.best_price ? `${item.best_price.toLocaleString()} Tokens` : '<span style="color: var(--text-muted);">-</span>'}
+            </td>
+            <td class="price-num">${item.listing_count || 0}</td>
+            <td class="price-num">${item.stock || (item.total_stock || '∞')}</td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function sortTable(column) {
@@ -503,7 +524,6 @@ const SUPABASE_ANON_KEY = 'sb_publishable_j7xJC8QrTTMzSMAnDiQKpA_Ndi_qRRx';
       renderTable();
     }
 
-    // Filter event listeners
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -519,7 +539,6 @@ const SUPABASE_ANON_KEY = 'sb_publishable_j7xJC8QrTTMzSMAnDiQKpA_Ndi_qRRx';
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // Launch
     fetchCatalog();
   </script>
 </body>
