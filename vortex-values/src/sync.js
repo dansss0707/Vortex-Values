@@ -4,16 +4,24 @@ const getItemUrl = (id) => `https://playvortex.io/api/catalog/${id}`;
 
 // Fetch a single item from Vortex
 async function fetchVortexItem(itemId) {
+  const url = getItemUrl(itemId);
   try {
-    const res = await fetch(getItemUrl(itemId));
-    if (res.status === 404) return null;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+
+    if (res.status === 404) {
+      return null;
+    }
     if (!res.ok) {
-      console.warn(`[Skip] Item #${itemId} returned status ${res.status}`);
+      console.warn(`[HTTP ${res.status}] Failed on #${itemId} via ${url}`);
       return null;
     }
     return await res.json();
   } catch (err) {
-    console.error(`Fetch error on #${itemId}:`, err.message);
+    console.error(`Fetch exception on #${itemId} (${url}):`, err.message);
     return null;
   }
 }
