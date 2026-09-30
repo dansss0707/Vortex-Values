@@ -1007,7 +1007,30 @@
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    // -----------------------------------------------------------
+    // AUTO-POLLING ENGINE (REFRESH EVERY 60 SECONDS)
+    // -----------------------------------------------------------
+    // 1. Initial immediate catalog load
     loadCatalog();
+
+    // 2. Background polling interval
+    const POLL_INTERVAL_MS = 60000; // 60 seconds
+
+    setInterval(async () => {
+      const statusText = document.getElementById('daemonStatus');
+      const originalText = statusText.textContent;
+      
+      // Subtle pulse indicator while pulling latest values
+      statusText.textContent = 'CHECKING FOR CATALOG UPDATES...';
+      statusText.style.color = 'var(--roli-gold)';
+
+      await loadCatalog();
+
+      setTimeout(() => {
+        statusText.textContent = 'LIVE DAEMON SYNC ACTIVE';
+        statusText.style.color = 'var(--roli-green)';
+      }, 1500);
+    }, POLL_INTERVAL_MS);
   </script>
 </body>
 </html>
