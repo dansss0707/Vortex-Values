@@ -18,16 +18,16 @@ jobs:
           node-version: 22
 
       - name: Install Dependencies
-        # Installs inside the vortex-values subfolder where your code lives
         run: |
           cd vortex-values
-          npm install @supabase/supabase-js
+          npm install @supabase/supabase-js puppeteer
 
       - name: Run Catalog Sync
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          VORTEX_COOKIE: ${{ secrets.VORTEX_COOKIE }}
+          VORTEX_USERNAME: ${{ secrets.VORTEX_USERNAME }}
+          VORTEX_PASSWORD: ${{ secrets.VORTEX_PASSWORD }}
         run: |
           cd vortex-values
           node src/sync.js
