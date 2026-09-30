@@ -1,27 +1,42 @@
 import { supabase } from './db.js';
 
 const getItemUrl = (id) => `https://playvortex.io/api/catalog/item/${id}`;
+const cookie = process.env.VORTEX_COOKIE || '';
 
-// Fetch a single item from Vortex
-async function fetchVortexItem(itemId) {
+// Fetch a single item with session cookies & polite rate handling
+async function fetchVortexItem(itemId, attempt = 1) {
   const url = getItemUrl(itemId);
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'accept': '*/*',
+        'accept-language': 'en-US,en;q=0.9',
+        'cookie': cookie,
+        'referer': `https://playvortex.io/catalog/${itemId}`,
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
       }
     });
 
-    if (res.status === 404) {
+    if (res.status === 404) return null;
+
+    if (res.status === 429) {
+      if (attempt <= 3) {
+        const waitTime = attempt * 3000;
+        console.warn(`[429 Rate Limit] #${itemId} - cooling down for ${waitTime / 1000}s...`);
+        await new Promise(r => setTimeout(r, waitTime));
+        return fetchVortexItem(itemId, attempt + 1);
+      }
       return null;
     }
+
     if (!res.ok) {
-      console.warn(`[HTTP ${res.status}] Failed on #${itemId} via ${url}`);
+      console.warn(`[HTTP ${res.status}] Failed on #${itemId}`);
       return null;
     }
+
     return await res.json();
   } catch (err) {
-    console.error(`Fetch exception on #${itemId} (${url}):`, err.message);
+    console.error(`Fetch error on #${itemId}:`, err.message);
     return null;
   }
 }
@@ -99,12 +114,12 @@ async function runCatalogSync(startId = 1, endId = 260) {
     if (itemData) {
       await processItem(itemData);
     }
-    // Polite 150ms delay between requests
-    await new Promise(resolve => setTimeout(resolve, 150));
+    // 700ms throttle to prevent 429 rate-limiting
+    await new Promise(resolve => setTimeout(resolve, 700));
   }
 
   console.log('=== Sync Completed Successfully ===');
 }
 
-// EXECUTE RUNNER
+// Run
 runCatalogSync(1, 260);
