@@ -3,25 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vortex Values | Item Catalog & Tracker</title>
+  <title>Vortex Catalog & Values | Item Trading Database</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0b0e14;
-      --card-bg: #121824;
-      --card-border: #1e293b;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --accent: #6366f1;
-      --accent-glow: rgba(99, 102, 241, 0.2);
-      --gold: #f59e0b;
-      --green: #10b981;
-      --red: #ef4444;
-      --purple: #a855f7;
+      --bg-darkest: #0d0f12;
+      --bg-surface: #14171e;
+      --card-bg: #1a1e27;
+      --card-hover: #222734;
+      --border-subtle: #272d3b;
+      --border-strong: #363e52;
+      
+      --text-main: #e2e8f0;
+      --text-muted: #7c8ba1;
+      --text-dim: #4f5b6e;
+
+      --roli-green: #00e676;
+      --roli-green-dark: #00b050;
+      --roli-gold: #ffb300;
+      --roli-red: #ff334b;
+      --roli-blue: #2979ff;
+      --roli-purple: #9d4edd;
     }
 
     * {
@@ -31,652 +37,713 @@
     }
 
     body {
-      background-color: var(--bg);
-      color: var(--text);
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-darkest);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow-x: hidden;
     }
 
-    header {
-      background: rgba(18, 24, 36, 0.8);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--card-border);
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      padding: 1rem 2rem;
+    /* Dense, utility-first top navigation */
+    .site-nav {
+      background: var(--bg-surface);
+      border-bottom: 2px solid var(--border-subtle);
+      padding: 0 1.5rem;
+      height: 52px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
-    .brand {
+    .brand-group {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      font-size: 1.35rem;
-      font-weight: 800;
-      letter-spacing: -0.5px;
+      gap: 0.85rem;
     }
 
-    .brand span {
-      background: linear-gradient(135deg, #818cf8, #c084fc);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+    .brand-logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--roli-gold);
     }
 
-    .container {
-      max-width: 1440px;
+    .brand-name {
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 700;
+      font-size: 1.15rem;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #fff;
+    }
+
+    .brand-name span {
+      color: var(--roli-gold);
+    }
+
+    .nav-stats-bar {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.8rem;
+    }
+
+    .nav-stat-item {
+      display: flex;
+      gap: 0.4rem;
+      color: var(--text-muted);
+    }
+
+    .nav-stat-item strong {
+      color: var(--text-main);
+    }
+
+    /* Sub-header ticker bar */
+    .market-ticker-bar {
+      background: #101319;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.5rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      background: var(--roli-green);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--roli-green);
+    }
+
+    /* Container */
+    .main-viewport {
+      max-width: 1560px;
       margin: 0 auto;
-      padding: 2rem 1.5rem;
+      padding: 1.25rem 1.5rem;
+      width: 100%;
+      flex: 1;
+    }
+
+    /* Action & Filter Toolbar */
+    .trading-toolbar {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 0.65rem 0.85rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .search-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 260px;
+      max-width: 440px;
+      background: var(--bg-darkest);
+      border: 1px solid var(--border-strong);
+      border-radius: 3px;
+      padding: 0.4rem 0.65rem;
+    }
+
+    .search-input-wrap input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
       width: 100%;
     }
 
-    /* KPI Grid */
-    .metrics-grid {
+    .filter-tabs-group {
+      display: flex;
+      gap: 0.35rem;
+      background: var(--bg-darkest);
+      padding: 2px;
+      border: 1px solid var(--border-subtle);
+      border-radius: 3px;
+    }
+
+    .filter-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.35rem 0.85rem;
+      border-radius: 2px;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-tab.active, .filter-tab:hover {
+      background: var(--card-hover);
+      color: #fff;
+    }
+
+    .filter-tab.active {
+      background: var(--border-strong);
+      color: var(--roli-gold);
+    }
+
+    .view-sort-group {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .select-dropdown {
+      background: var(--bg-darkest);
+      border: 1px solid var(--border-strong);
+      color: var(--text-main);
+      padding: 0.4rem 0.65rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      font-family: 'IBM Plex Mono', monospace;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* ==========================================================================
+       ROLIMON'S TALL VERTICAL CARDS (Long-side Up)
+       ========================================================================== */
+    .items-card-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(188px, 1fr));
+      gap: 12px;
       margin-bottom: 2rem;
     }
 
-    .metric-card {
+    .roli-card {
       background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 1.25rem;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-
-    .metric-title {
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin-bottom: 0.4rem;
-    }
-
-    .metric-val {
-      font-size: 1.5rem;
-      font-weight: 800;
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    /* Controls */
-    .controls-panel {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 1rem 1.25rem;
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
       display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.5rem;
-    }
-
-    .search-box {
+      flex-direction: column;
       position: relative;
-      flex: 1;
-      min-width: 260px;
-    }
-
-    .search-box input {
-      width: 100%;
-      background: #090d16;
-      border: 1px solid var(--card-border);
-      color: var(--text);
-      padding: 0.75rem 1rem 0.75rem 2.5rem;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .search-box input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px var(--accent-glow);
-    }
-
-    .search-box svg {
-      position: absolute;
-      left: 0.85rem;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 18px;
-      height: 18px;
-      fill: var(--text-muted);
-    }
-
-    .filter-tabs {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .tab-btn {
-      background: #090d16;
-      border: 1px solid var(--card-border);
-      color: var(--text-muted);
-      padding: 0.6rem 1rem;
-      border-radius: 8px;
       cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 600;
-      transition: all 0.2s;
-    }
-
-    .tab-btn:hover, .tab-btn.active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
-
-    /* Main Catalog Table */
-    .table-wrapper {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      overflow-x: auto;
-      box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-    }
-
-    th {
-      background: #0d121c;
-      padding: 1rem 1.25rem;
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      border-bottom: 1px solid var(--card-border);
       user-select: none;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    th:hover {
-      color: var(--text);
-    }
-
-    td {
-      padding: 0.85rem 1.25rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      font-size: 0.95rem;
-      vertical-align: middle;
-      white-space: nowrap;
-    }
-
-    tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .item-cell {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      cursor: pointer;
-    }
-
-    .item-thumb-wrapper {
-      width: 52px;
-      height: 52px;
-      background: #090d16;
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
+      transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
       overflow: hidden;
-      position: relative;
     }
 
-    /* Clean standard thumbnail behavior */
-    .item-thumb {
+    .roli-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-strong);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      background: var(--card-hover);
+    }
+
+    /* Thumbnail Box (1:1 Ratio) */
+    .card-viewport {
+      position: relative;
+      width: 100%;
+      padding-top: 100%; /* Perfect square */
+      background: radial-gradient(circle, #212735 0%, #151821 100%);
+      border-bottom: 1px solid var(--border-subtle);
+      overflow: hidden;
+    }
+
+    .card-viewport img {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
       object-fit: contain;
-      image-rendering: -webkit-optimize-contrast;
-      transition: transform 0.2s ease;
+      padding: 8px;
     }
 
-    tr:hover .item-thumb {
-      transform: scale(1.08);
+    /* Emblems & Badges on Image */
+    .card-emblem-limited {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      background: #8b0000;
+      border: 1px solid #ff4444;
+      color: #fff;
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 700;
+      font-size: 0.7rem;
+      padding: 1px 6px;
+      border-radius: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      z-index: 2;
     }
 
-    .item-info {
+    .card-id-tag {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(13, 15, 18, 0.85);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      padding: 1px 4px;
+      border-radius: 2px;
+      z-index: 2;
+    }
+
+    /* RAP Ribbon at bottom of image */
+    .card-rap-ribbon {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(16, 20, 28, 0.9);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 3px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      z-index: 2;
+    }
+
+    .card-rap-ribbon .lbl {
+      color: var(--text-muted);
+      font-size: 0.65rem;
+      font-weight: 600;
+    }
+
+    .card-rap-ribbon .val {
+      color: var(--roli-gold);
+      font-weight: 700;
+    }
+
+    /* Card Details Body */
+    .card-body {
+      padding: 10px;
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
+      flex: 1;
+      gap: 8px;
     }
 
-    .item-title {
-      font-weight: 700;
+    .card-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
       color: #fff;
-      transition: color 0.15s;
+      line-height: 1.25;
+      height: 2.5em; /* 2 lines max */
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
     }
 
-    .item-cell:hover .item-title {
-      color: #818cf8;
+    /* Metric Key-Value Rows */
+    .card-metric-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      margin-top: auto;
     }
 
-    .badge {
-      display: inline-flex;
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
+      padding: 2px 0;
+    }
+
+    .metric-row .m-label {
+      color: var(--text-muted);
       font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      width: fit-content;
     }
 
-    .badge-limited {
-      background: rgba(245, 158, 11, 0.15);
-      border: 1px solid rgba(245, 158, 11, 0.4);
-      color: var(--gold);
+    .metric-row .m-val {
+      font-weight: 600;
+      color: var(--text-main);
     }
 
-    .badge-standard {
-      background: rgba(148, 163, 184, 0.1);
-      border: 1px solid rgba(148, 163, 184, 0.2);
+    .val-green { color: var(--roli-green) !important; font-weight: 700 !important; }
+    .val-gold { color: var(--roli-gold) !important; font-weight: 700 !important; }
+    .val-dim { color: var(--text-dim) !important; }
+
+    /* Card Footer Bar */
+    .card-footer {
+      background: #13161c;
+      border-top: 1px solid var(--border-subtle);
+      padding: 5px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
       color: var(--text-muted);
     }
 
-    .badge-resellable {
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      color: var(--green);
-    }
-
-    .badge-offsale {
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.4);
-      color: var(--red);
-    }
-
-    .price-num {
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 700;
-    }
-
-    .floor-price {
-      color: var(--green);
-    }
-
-    .rap-price {
-      color: var(--purple);
-    }
-
-    .empty-state {
-      padding: 4rem 2rem;
-      text-align: center;
-      color: var(--text-muted);
-    }
-
-    /* Modal Dossier Overlay */
-    .modal-overlay {
+    /* ==========================================================================
+       MODAL: ITEM DOSSIER & PRICE TREND
+       ========================================================================== */
+    .modal-backdrop {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(10px);
-      z-index: 100;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 1000;
       align-items: center;
       justify-content: center;
       padding: 1.5rem;
     }
 
-    .modal-overlay.active {
+    .modal-backdrop.open {
       display: flex;
     }
 
-    .modal-content {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 16px;
+    .modal-dossier {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
       width: 100%;
-      max-width: 960px;
+      max-width: 900px;
       max-height: 90vh;
       overflow-y: auto;
-      box-shadow: 0 10px 50px rgba(0, 0, 0, 0.7);
-      position: relative;
-      padding: 2rem;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
       display: flex;
       flex-direction: column;
-      gap: 1.75rem;
     }
 
-    .modal-close {
-      position: absolute;
-      top: 1.25rem;
-      right: 1.25rem;
-      background: #090d16;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      color: var(--text-muted);
-      width: 34px;
-      height: 34px;
+    .modal-head {
+      background: #11141a;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.85rem 1.25rem;
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
-      font-size: 1.25rem;
-      cursor: pointer;
-      transition: all 0.15s;
     }
 
-    .modal-close:hover {
+    .modal-head-title {
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 700;
+      font-size: 1.15rem;
       color: #fff;
-      border-color: var(--accent);
-    }
-
-    .modal-header {
-      display: flex;
-      gap: 1.5rem;
-      align-items: center;
-    }
-
-    .modal-thumb {
-      width: 90px;
-      height: 90px;
-      background: #090d16;
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      overflow: hidden;
       display: flex;
       align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      padding: 4px;
-    }
-
-    .modal-thumb img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-
-    .modal-dossier-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
       gap: 0.75rem;
     }
 
-    .dossier-card {
-      background: #090d16;
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
-      padding: 0.85rem 1rem;
-    }
-
-    .dossier-label {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+    .modal-close-btn {
+      background: transparent;
+      border: none;
       color: var(--text-muted);
-      margin-bottom: 0.25rem;
+      font-size: 1.4rem;
+      cursor: pointer;
+      line-height: 1;
     }
 
-    .dossier-val {
-      font-size: 1.15rem;
-      font-weight: 800;
-      font-family: 'JetBrains Mono', monospace;
+    .modal-close-btn:hover { color: #fff; }
+
+    .modal-body {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
     }
 
-    .section-title {
-      font-size: 1.1rem;
-      font-weight: 700;
+    .dossier-overview-row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 1.25rem;
+    }
+
+    .dossier-image-box {
+      width: 140px;
+      height: 140px;
+      background: #0d0f12;
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 0.75rem;
-    }
-
-    .chart-container {
+      justify-content: center;
       position: relative;
-      height: 280px;
-      width: 100%;
-      background: #090d16;
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 1rem;
     }
 
-    /* Active Listings Sub-table inside Modal */
-    .listings-table-wrapper {
-      background: #090d16;
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      max-height: 240px;
+    .dossier-image-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 6px;
+    }
+
+    .dossier-stats-matrix {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+    }
+
+    .matrix-tile {
+      background: #11141b;
+      border: 1px solid var(--border-subtle);
+      padding: 8px 12px;
+      border-radius: 3px;
+    }
+
+    .matrix-lbl {
+      font-size: 0.65rem;
+      font-family: 'IBM Plex Mono', monospace;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .matrix-val {
+      font-size: 1.15rem;
+      font-weight: 700;
+      font-family: 'IBM Plex Mono', monospace;
+      color: #fff;
+    }
+
+    .chart-panel {
+      background: #11141b;
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 1rem;
+      height: 260px;
+      position: relative;
+    }
+
+    .listings-panel {
+      background: #11141b;
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      max-height: 220px;
       overflow-y: auto;
     }
 
-    .listings-table-wrapper table th {
+    .listings-panel table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      text-align: left;
+    }
+
+    .listings-panel th {
+      background: #0e1017;
+      padding: 6px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-subtle);
       position: sticky;
       top: 0;
-      z-index: 5;
+      z-index: 2;
     }
 
-    .serial-tag {
-      background: rgba(99, 102, 241, 0.15);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      color: var(--accent);
-      padding: 0.15rem 0.45rem;
-      border-radius: 4px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      font-weight: 700;
+    .listings-panel td {
+      padding: 6px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      font-family: 'IBM Plex Mono', monospace;
     }
 
-    .footer {
-      margin-top: auto;
-      text-align: center;
-      padding: 2rem;
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 1rem 1.5rem;
+      background: var(--bg-surface);
+      font-size: 0.75rem;
       color: var(--text-muted);
-      font-size: 0.85rem;
-      border-top: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="brand">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-        <polyline points="2 17 12 22 22 17"></polyline>
-        <polyline points="2 12 12 17 22 12"></polyline>
-      </svg>
-      <div>Vortex <span>Values</span></div>
+  <!-- Top Dark Terminal Nav -->
+  <nav class="site-nav">
+    <div class="brand-group">
+      <div class="brand-logo">V</div>
+      <div class="brand-name">VORTEX <span>VALUES</span></div>
     </div>
-    <div style="font-size: 0.85rem; color: var(--text-muted);" id="statusBadge">Connecting...</div>
-  </header>
-
-  <div class="container">
-    <!-- Top Stats -->
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-title">Tracked Items</div>
-        <div class="metric-val" id="totalItemsCount">-</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-title">Limited Items</div>
-        <div class="metric-val" style="color: var(--gold);" id="limitedCount">-</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-title">Market RAP</div>
-        <div class="metric-val" style="color: var(--purple);" id="totalRap">-</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-title">Active Listings</div>
-        <div class="metric-val" style="color: var(--green);" id="listingsCount">-</div>
-      </div>
+    <div class="nav-stats-bar">
+      <div class="nav-stat-item">ITEMS: <strong id="kpiItems">0</strong></div>
+      <div class="nav-stat-item">LIMITEDS: <strong id="kpiLimiteds" style="color: var(--roli-gold);">0</strong></div>
+      <div class="nav-stat-item">MARKET RAP: <strong id="kpiRap" style="color: var(--roli-green);">0</strong></div>
+      <div class="nav-stat-item">ACTIVE COPIES: <strong id="kpiListings">0</strong></div>
     </div>
+  </nav>
 
-    <!-- Filter and Search -->
-    <div class="controls-panel">
-      <div class="search-box">
-        <svg viewBox="0 0 24 24">
-          <path d="M10 2a8 8 0 105.29 14.09l4.31 4.3 1.41-1.41-4.3-4.31A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/>
-        </svg>
-        <input type="text" id="searchInput" placeholder="Search by name, ID, or type (e.g. Traffic Cone, 243, Hat)..." />
-      </div>
-
-      <div class="filter-tabs">
-        <button class="tab-btn active" data-filter="all">All Items</button>
-        <button class="tab-btn" data-filter="limited">Limiteds Only</button>
-        <button class="tab-btn" data-filter="resellable">For Sale</button>
-      </div>
+  <!-- Market Live Ticker -->
+  <div class="market-ticker-bar">
+    <div class="status-indicator">
+      <div class="status-dot"></div>
+      <span id="daemonStatus">LIVE DAEMON SYNC ACTIVE</span>
     </div>
-
-    <!-- Catalog Table -->
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th onclick="sortTable('id')">ID ⇕</th>
-            <th onclick="sortTable('name')">Item ⇕</th>
-            <th>Type</th>
-            <th onclick="sortTable('rap')">RAP ⇕</th>
-            <th onclick="sortTable('best_price')">Best Floor Price ⇕</th>
-            <th onclick="sortTable('original_price')">Orig. Price ⇕</th>
-            <th onclick="sortTable('listing_count')">Listings ⇕</th>
-            <th onclick="sortTable('stock')">Stock ⇕</th>
-          </tr>
-        </thead>
-        <tbody id="catalogBody">
-          <tr>
-            <td colspan="8" class="empty-state">Loading items from Supabase...</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <div>SOURCE: PLAYVORTEX.IO API</div>
   </div>
 
-  <!-- Complete Item Dossier Modal -->
-  <div class="modal-overlay" id="itemModal">
-    <div class="modal-content">
-      <button class="modal-close" onclick="closeModal()">&times;</button>
-      
-      <!-- Item Identity Header -->
-      <div class="modal-header">
-        <div class="modal-thumb" id="modalThumbWrapper"></div>
+  <!-- Main Viewport -->
+  <main class="main-viewport">
+
+    <!-- Rolimon's Style Dense Controls -->
+    <div class="trading-toolbar">
+      <div class="search-input-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="filterInput" placeholder="Search catalog by item name, ID, or type..." />
+      </div>
+
+      <div class="filter-tabs-group">
+        <button class="filter-tab active" data-filter="all">All Items</button>
+        <button class="filter-tab" data-filter="limited">Limiteds</button>
+        <button class="filter-tab" data-filter="for-sale">For Sale (Floor)</button>
+      </div>
+
+      <div class="view-sort-group">
+        <label style="font-size:0.75rem; color:var(--text-muted); font-family:'IBM Plex Mono';">SORT:</label>
+        <select class="select-dropdown" id="sortSelect">
+          <option value="id-asc">ID (Low to High)</option>
+          <option value="id-desc">ID (High to Low)</option>
+          <option value="rap-desc">RAP (Highest)</option>
+          <option value="floor-desc">Floor (Highest)</option>
+          <option value="floor-asc">Floor (Lowest)</option>
+          <option value="listings-desc">Most Listings</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- The Rolimon's Tall Vertical Cards Grid -->
+    <div class="items-card-grid" id="cardsGrid">
+      <!-- Injected via JavaScript -->
+    </div>
+
+  </main>
+
+  <!-- Item Dossier Modal -->
+  <div class="modal-backdrop" id="dossierModal">
+    <div class="modal-dossier">
+      <div class="modal-head">
+        <div class="modal-head-title">
+          <span style="color:var(--text-muted); font-size:0.9rem;" id="modalId">#0</span>
+          <span id="modalTitle">-</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="dossier-overview-row">
+          <div class="dossier-image-box">
+            <img id="modalImg" src="" alt="" />
+          </div>
+          <div class="dossier-stats-matrix">
+            <div class="matrix-tile">
+              <div class="matrix-lbl">Recent Avg Price (RAP)</div>
+              <div class="matrix-val val-gold" id="modalRap">-</div>
+            </div>
+            <div class="matrix-tile">
+              <div class="matrix-lbl">Lowest Floor Price</div>
+              <div class="matrix-val val-green" id="modalFloor">-</div>
+            </div>
+            <div class="matrix-tile">
+              <div class="matrix-lbl">Original Retail</div>
+              <div class="matrix-val" id="modalOrig">-</div>
+            </div>
+            <div class="matrix-tile">
+              <div class="matrix-lbl">Active Resale Copies</div>
+              <div class="matrix-val" id="modalListingsCount">-</div>
+            </div>
+            <div class="matrix-tile">
+              <div class="matrix-lbl">Remaining Stock</div>
+              <div class="matrix-val" id="modalStock">-</div>
+            </div>
+            <div class="matrix-tile">
+              <div class="matrix-lbl">Total Supply</div>
+              <div class="matrix-val" id="modalTotalSupply">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- History Chart -->
         <div>
-          <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
-            <span style="color:var(--text-muted); font-family:'JetBrains Mono'; font-size:0.9rem;" id="modalIdTag">#0</span>
-            <h2 id="modalItemTitle" style="font-size: 1.6rem; font-weight: 800;">-</h2>
-          </div>
-          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-            <span id="modalItemBadge" class="badge"></span>
-            <span id="modalSaleBadge" class="badge"></span>
-            <span id="modalItemType" style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600;"></span>
-            <a id="modalItemLink" href="#" target="_blank" rel="noopener" style="color: var(--accent); font-size: 0.85rem; text-decoration: none; font-weight: 600; margin-left: 0.5rem;">View on Vortex Catalog ↗</a>
+          <div style="font-family:'Chakra Petch'; font-size:0.85rem; color:var(--text-muted); margin-bottom:6px; font-weight:700;">FLOOR PRICE TRACKING (ITEM_HISTORY)</div>
+          <div class="chart-panel">
+            <canvas id="dossierChart"></canvas>
           </div>
         </div>
-      </div>
 
-      <!-- Item Description -->
-      <div id="modalDescriptionWrapper" style="display:none; background:#090d16; border:1px solid var(--card-border); padding:0.75rem 1rem; border-radius:8px; font-size:0.85rem; color:var(--text-muted); line-height:1.4;">
-        <span style="color:#fff; font-weight:700;">Description: </span><span id="modalDescriptionText"></span>
-      </div>
-
-      <!-- Comprehensive Metrics Dossier Grid -->
-      <div class="modal-dossier-grid">
-        <div class="dossier-card">
-          <div class="dossier-label">Recent Avg Price (RAP)</div>
-          <div class="dossier-val rap-price" id="modalRap">-</div>
-        </div>
-        <div class="dossier-card">
-          <div class="dossier-label">Lowest Floor Price</div>
-          <div class="dossier-val floor-price" id="modalFloor">-</div>
-        </div>
-        <div class="dossier-card">
-          <div class="dossier-label">Original Retail Price</div>
-          <div class="dossier-val" id="modalOriginal">-</div>
-        </div>
-        <div class="dossier-card">
-          <div class="dossier-label">Active Listings</div>
-          <div class="dossier-val" id="modalListings">-</div>
-        </div>
-        <div class="dossier-card">
-          <div class="dossier-label">Remaining Stock</div>
-          <div class="dossier-val" id="modalStock">-</div>
-        </div>
-        <div class="dossier-card">
-          <div class="dossier-label">Total Supply Created</div>
-          <div class="dossier-val" id="modalTotalStock">-</div>
+        <!-- Serial Listings -->
+        <div>
+          <div style="font-family:'Chakra Petch'; font-size:0.85rem; color:var(--text-muted); margin-bottom:6px; font-weight:700; display:flex; justify-content:space-between;">
+            <span>ACTIVE RESALE COPIES</span>
+            <a id="vortexCatalogLink" href="#" target="_blank" rel="noopener" style="color:var(--roli-blue); text-decoration:none;">Open on Vortex ↗</a>
+          </div>
+          <div class="listings-panel">
+            <table>
+              <thead>
+                <tr>
+                  <th>SERIAL</th>
+                  <th>PRICE</th>
+                  <th>SELLER</th>
+                  <th>TIMESTAMP</th>
+                </tr>
+              </thead>
+              <tbody id="listingsRows">
+                <tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:1rem;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-
-      <!-- Price & Floor History Graph -->
-      <div>
-        <div class="section-title">
-          <span>Historical Floor Price Trend</span>
-          <span style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Recorded by Sync Daemon</span>
-        </div>
-        <div class="chart-container">
-          <canvas id="priceHistoryChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Live Active Listings Table -->
-      <div>
-        <div class="section-title">
-          <span>Active Resale Listings</span>
-          <span style="font-size:0.75rem; color:var(--text-muted); font-weight:500;" id="listingsCountSubtitle">0 available</span>
-        </div>
-        <div class="listings-table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Serial</th>
-                <th>Price</th>
-                <th>Seller</th>
-                <th>Listing Date</th>
-              </tr>
-            </thead>
-            <tbody id="modalListingsBody">
-              <tr>
-                <td colspan="4" class="empty-state" style="padding:1.5rem;">Loading active copies...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
     </div>
   </div>
 
-  <div class="footer">
-    Data updated continuously via GitHub Actions sync daemon.
-  </div>
+  <footer>
+    <div>VORTEX VALUES // COMMUNITY TRADING TERMINAL</div>
+    <div style="font-family:'IBM Plex Mono';">DATA REFRESH: 30M INTERVAL</div>
+  </footer>
 
   <script>
+    // Live Supabase API Endpoint
     const SUPABASE_URL = 'https://rwuudgyyzlgxxmnqxqhe.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_j7xJC8QrTTMzSMAnDiQKpA_Ndi_qRRx';
 
     const { createClient } = window.supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    let rawItems = [];
+    let catalogItems = [];
     let activeFilter = 'all';
-    let currentSort = { column: 'id', asc: true };
     let chartInstance = null;
 
-    async function fetchCatalog() {
-      const statusBadge = document.getElementById('statusBadge');
-      statusBadge.textContent = 'Syncing...';
-
+    async function loadCatalog() {
       try {
         const { data, error } = await db
           .from('items')
@@ -685,203 +752,165 @@
 
         if (error) throw error;
 
-        rawItems = (data || []).map(item => ({
+        catalogItems = (data || []).map(item => ({
           ...item,
           rap: item.best_price || item.original_price || 0
         }));
 
-        statusBadge.textContent = '● Live';
-        statusBadge.style.color = 'var(--green)';
-
-        updateMetrics();
-        renderTable();
+        updateKpiMetrics();
+        renderCards();
       } catch (err) {
-        console.error('Supabase query error:', err);
-        statusBadge.textContent = '● Offline / Error';
-        statusBadge.style.color = 'var(--red)';
-        document.getElementById('catalogBody').innerHTML = `
-          <tr>
-            <td colspan="8" class="empty-state" style="color: var(--red);">
-              Failed to load items. Check database connection.
-            </td>
-          </tr>
-        `;
+        console.error('Failed to query Supabase:', err);
+        document.getElementById('daemonStatus').textContent = 'OFFLINE / CONNECTION ERROR';
+        document.getElementById('daemonStatus').style.color = 'var(--roli-red)';
       }
     }
 
-    function updateMetrics() {
-      document.getElementById('totalItemsCount').textContent = rawItems.length;
-      document.getElementById('limitedCount').textContent = rawItems.filter(i => i.limited).length;
-      
-      const totalRap = rawItems.reduce((sum, item) => sum + (item.rap || 0), 0);
-      document.getElementById('totalRap').textContent = totalRap.toLocaleString();
+    function updateKpiMetrics() {
+      document.getElementById('kpiItems').textContent = catalogItems.length;
+      document.getElementById('kpiLimiteds').textContent = catalogItems.filter(i => i.limited).length;
 
-      const totalListings = rawItems.reduce((acc, curr) => acc + (curr.listing_count || 0), 0);
-      document.getElementById('listingsCount').textContent = totalListings;
+      const totalRap = catalogItems.reduce((acc, curr) => acc + (curr.rap || 0), 0);
+      document.getElementById('kpiRap').textContent = totalRap.toLocaleString();
+
+      const totalListings = catalogItems.reduce((acc, curr) => acc + (curr.listing_count || 0), 0);
+      document.getElementById('kpiListings').textContent = totalListings;
     }
 
-    function renderTable() {
-      const tbody = document.getElementById('catalogBody');
-      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+    function renderCards() {
+      const grid = document.getElementById('cardsGrid');
+      const query = document.getElementById('filterInput').value.toLowerCase().trim();
+      const sortValue = document.getElementById('sortSelect').value;
 
-      let filtered = rawItems.filter(item => {
-        const matchesQuery = item.name.toLowerCase().includes(query) || 
-                             item.id.toString() === query || 
-                             (item.item_type || '').toLowerCase().includes(query);
-        if (!matchesQuery) return false;
+      // Filter
+      let list = catalogItems.filter(item => {
+        const match = item.name.toLowerCase().includes(query) ||
+                      item.id.toString() === query ||
+                      (item.item_type || '').toLowerCase().includes(query);
+        if (!match) return false;
 
         if (activeFilter === 'limited') return Boolean(item.limited);
-        if (activeFilter === 'resellable') return (item.listing_count || 0) > 0;
+        if (activeFilter === 'for-sale') return (item.listing_count || 0) > 0;
         return true;
       });
 
-      filtered.sort((a, b) => {
-        let valA = a[currentSort.column] ?? 0;
-        let valB = b[currentSort.column] ?? 0;
-
-        if (typeof valA === 'string') valA = valA.toLowerCase();
-        if (typeof valB === 'string') valB = valB.toLowerCase();
-
-        if (valA < valB) return currentSort.asc ? -1 : 1;
-        if (valA > valB) return currentSort.asc ? 1 : -1;
+      // Sort
+      list.sort((a, b) => {
+        if (sortValue === 'id-asc') return a.id - b.id;
+        if (sortValue === 'id-desc') return b.id - a.id;
+        if (sortValue === 'rap-desc') return (b.rap || 0) - (a.rap || 0);
+        if (sortValue === 'floor-desc') return (b.best_price || 0) - (a.best_price || 0);
+        if (sortValue === 'floor-asc') return (a.best_price || 99999999) - (b.best_price || 99999999);
+        if (sortValue === 'listings-desc') return (b.listing_count || 0) - (a.listing_count || 0);
         return 0;
       });
 
-      if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No matching items found.</td></tr>`;
+      if (list.length === 0) {
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:4rem; color:var(--text-muted); font-family:'IBM Plex Mono';">NO ITEMS FOUND IN CURRENT VIEW</div>`;
         return;
       }
 
-      tbody.innerHTML = filtered.map(item => {
+      grid.innerHTML = list.map(item => {
         const thumbUrl = `https://playvortex.io/api/catalog/thumbnail/${item.id}`;
+        const floorText = item.best_price ? `${item.best_price.toLocaleString()}` : '—';
+        const floorClass = item.best_price ? 'val-green' : 'val-dim';
+        const origText = item.original_price ? item.original_price.toLocaleString() : 'FREE';
 
         return `
-          <tr>
-            <td class="price-num" style="color: var(--text-muted); font-size: 0.85rem;">#${item.id}</td>
-            <td>
-              <div class="item-cell" onclick="openItemModal(${item.id})">
-                <div class="item-thumb-wrapper">
-                  <img 
-                    src="${thumbUrl}" 
-                    alt="${escapeHtml(item.name)}" 
-                    class="item-thumb" 
-                    loading="lazy"
-                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                  />
-                  <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-family:'JetBrains Mono'; color:var(--text-muted); font-size:0.75rem;">
-                    #${item.id}
-                  </div>
+          <div class="roli-card" onclick="openDossier(${item.id})">
+            <!-- 1:1 Image Viewport -->
+            <div class="card-viewport">
+              ${item.limited ? '<div class="card-emblem-limited">LIMITED</div>' : ''}
+              <div class="card-id-tag">#${item.id}</div>
+              <img 
+                src="${thumbUrl}" 
+                alt="${escapeHtml(item.name)}" 
+                loading="lazy"
+                onerror="this.style.opacity='0.25'"
+              />
+              <div class="card-rap-ribbon">
+                <span class="lbl">RAP</span>
+                <span class="val">${item.rap ? item.rap.toLocaleString() : '—'}</span>
+              </div>
+            </div>
+
+            <!-- Vertical Card Body -->
+            <div class="card-body">
+              <div class="card-title" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+              
+              <div class="card-metric-rows">
+                <div class="metric-row">
+                  <span class="m-label">FLOOR:</span>
+                  <span class="m-val ${floorClass}">${floorText}</span>
                 </div>
-                <div class="item-info">
-                  <span class="item-title">${escapeHtml(item.name)}</span>
-                  <div>
-                    ${item.limited 
-                      ? '<span class="badge badge-limited">Limited</span>' 
-                      : '<span class="badge badge-standard">Standard</span>'}
-                  </div>
+                <div class="metric-row">
+                  <span class="m-label">ORIGINAL:</span>
+                  <span class="m-val">${origText}</span>
+                </div>
+                <div class="metric-row">
+                  <span class="m-label">COPIES:</span>
+                  <span class="m-val">${item.listing_count || 0}</span>
                 </div>
               </div>
-            </td>
-            <td><span style="color: var(--text-muted);">${escapeHtml(item.item_type || 'Item')}</span></td>
-            <td class="price-num rap-price">${item.rap ? item.rap.toLocaleString() : '-'}</td>
-            <td class="price-num floor-price">
-              ${item.best_price ? `${item.best_price.toLocaleString()}` : '<span style="color: var(--text-muted);">-</span>'}
-            </td>
-            <td class="price-num">${item.original_price ? item.original_price.toLocaleString() : 'N/A'}</td>
-            <td class="price-num">${item.listing_count || 0}</td>
-            <td class="price-num">${item.stock || (item.total_stock || '∞')}</td>
-          </tr>
+            </div>
+
+            <!-- Card Bottom Footer -->
+            <div class="card-footer">
+              <span>${escapeHtml(item.item_type || 'Item')}</span>
+              <span>${item.stock != null ? item.stock : '∞'} stock</span>
+            </div>
+          </div>
         `;
       }).join('');
     }
 
-    function sortTable(column) {
-      if (currentSort.column === column) {
-        currentSort.asc = !currentSort.asc;
-      } else {
-        currentSort.column = column;
-        currentSort.asc = true;
-      }
-      renderTable();
-    }
-
-    /* Modal Dossier Logic */
-    async function openItemModal(itemId) {
-      const item = rawItems.find(i => i.id === itemId);
+    /* Modal / Deep Dive Dossier */
+    async function openDossier(itemId) {
+      const item = catalogItems.find(i => i.id === itemId);
       if (!item) return;
 
       const thumbUrl = `https://playvortex.io/api/catalog/thumbnail/${item.id}`;
 
-      document.getElementById('modalIdTag').textContent = `#${item.id}`;
-      document.getElementById('modalItemTitle').textContent = item.name;
-      document.getElementById('modalItemType').textContent = item.item_type || 'Item';
-      document.getElementById('modalItemLink').href = `https://playvortex.io/catalog/${item.id}`;
+      document.getElementById('modalId').textContent = `#${item.id}`;
+      document.getElementById('modalTitle').textContent = item.name;
+      document.getElementById('modalImg').src = thumbUrl;
+      document.getElementById('vortexCatalogLink').href = `https://playvortex.io/catalog/${item.id}`;
 
-      // Limited badge
-      const badge = document.getElementById('modalItemBadge');
-      badge.textContent = item.limited ? 'Limited' : 'Standard';
-      badge.className = `badge ${item.limited ? 'badge-limited' : 'badge-standard'}`;
-
-      // Off-sale / Resellable badge
-      const saleBadge = document.getElementById('modalSaleBadge');
-      if (item.off_sale) {
-        saleBadge.textContent = 'Off Sale';
-        saleBadge.className = 'badge badge-offsale';
-      } else {
-        saleBadge.textContent = 'On Sale';
-        saleBadge.className = 'badge badge-resellable';
-      }
-
-      // Description
-      const descWrapper = document.getElementById('modalDescriptionWrapper');
-      if (item.description && item.description.trim() !== '') {
-        descWrapper.style.display = 'block';
-        document.getElementById('modalDescriptionText').textContent = item.description;
-      } else {
-        descWrapper.style.display = 'none';
-      }
-
-      // Thumbnail
-      document.getElementById('modalThumbWrapper').innerHTML = `
-        <img src="${thumbUrl}" alt="${escapeHtml(item.name)}" class="item-thumb" />
-      `;
-
-      // Metrics Grid
-      document.getElementById('modalRap').textContent = item.rap ? `${item.rap.toLocaleString()}` : '-';
-      document.getElementById('modalFloor').textContent = item.best_price ? `${item.best_price.toLocaleString()}` : 'None';
-      document.getElementById('modalOriginal').textContent = item.original_price ? `${item.original_price.toLocaleString()}` : 'N/A';
-      document.getElementById('modalListings').textContent = item.listing_count || 0;
+      document.getElementById('modalRap').textContent = item.rap ? item.rap.toLocaleString() : '—';
+      document.getElementById('modalFloor').textContent = item.best_price ? item.best_price.toLocaleString() : 'None';
+      document.getElementById('modalOrig').textContent = item.original_price ? item.original_price.toLocaleString() : 'Free';
+      document.getElementById('modalListingsCount').textContent = item.listing_count || 0;
       document.getElementById('modalStock').textContent = item.stock != null ? item.stock.toLocaleString() : '∞';
-      document.getElementById('modalTotalStock').textContent = item.total_stock ? item.total_stock.toLocaleString() : 'N/A';
+      document.getElementById('modalTotalSupply').textContent = item.total_stock ? item.total_stock.toLocaleString() : '—';
 
-      document.getElementById('itemModal').classList.add('active');
+      document.getElementById('dossierModal').classList.add('open');
 
-      // Fetch history for Chart
-      fetchAndRenderChart(item);
+      // 1. Fetch History & Build Chart
+      renderChart(item);
 
-      // Fetch active listings breakdown
-      fetchAndRenderListings(item.id);
+      // 2. Fetch Active Listings
+      renderListings(item.id);
     }
 
-    async function fetchAndRenderChart(item) {
-      const { data: historyData } = await db
+    async function renderChart(item) {
+      const { data: history } = await db
         .from('item_history')
         .select('*')
         .eq('item_id', item.id)
         .order('recorded_at', { ascending: true });
 
-      const ctx = document.getElementById('priceHistoryChart').getContext('2d');
+      const ctx = document.getElementById('dossierChart').getContext('2d');
       if (chartInstance) chartInstance.destroy();
 
       let labels = [];
-      let prices = [];
+      let points = [];
 
-      if (historyData && historyData.length > 0) {
-        labels = historyData.map(h => new Date(h.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }));
-        prices = historyData.map(h => h.best_price);
+      if (history && history.length > 0) {
+        labels = history.map(h => new Date(h.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }));
+        points = history.map(h => h.best_price);
       } else {
-        labels = ['Initial Sync', 'Current'];
-        prices = [item.best_price || item.original_price || 0, item.best_price || item.original_price || 0];
+        labels = ['Initial', 'Current'];
+        points = [item.best_price || item.original_price || 0, item.best_price || item.original_price || 0];
       }
 
       chartInstance = new Chart(ctx, {
@@ -889,15 +918,15 @@
         data: {
           labels: labels,
           datasets: [{
-            label: 'Floor Price',
-            data: prices,
-            borderColor: '#6366f1',
-            backgroundColor: 'rgba(99, 102, 241, 0.1)',
-            fill: true,
-            tension: 0.35,
+            label: 'Floor',
+            data: points,
+            borderColor: '#ffb300',
+            backgroundColor: 'rgba(255, 179, 0, 0.08)',
             borderWidth: 2,
-            pointBackgroundColor: '#818cf8',
-            pointRadius: 4
+            tension: 0.1,
+            fill: true,
+            pointBackgroundColor: '#ffb300',
+            pointRadius: 3
           }]
         },
         options: {
@@ -906,81 +935,79 @@
           plugins: {
             legend: { display: false },
             tooltip: {
-              backgroundColor: '#121824',
-              borderColor: '#1e293b',
+              backgroundColor: '#14171e',
+              borderColor: '#363e52',
               borderWidth: 1,
-              titleColor: '#f8fafc',
-              bodyColor: '#94a3b8'
+              titleFont: { family: 'IBM Plex Mono' },
+              bodyFont: { family: 'IBM Plex Mono' }
             }
           },
           scales: {
             x: {
-              grid: { color: 'rgba(255, 255, 255, 0.05)' },
-              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 } }
+              grid: { color: 'rgba(255, 255, 255, 0.04)' },
+              ticks: { color: '#7c8ba1', font: { family: 'IBM Plex Mono', size: 10 } }
             },
             y: {
-              grid: { color: 'rgba(255, 255, 255, 0.05)' },
-              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 11 } }
+              grid: { color: 'rgba(255, 255, 255, 0.04)' },
+              ticks: { color: '#7c8ba1', font: { family: 'IBM Plex Mono', size: 10 } }
             }
           }
         }
       });
     }
 
-    async function fetchAndRenderListings(itemId) {
-      const tbody = document.getElementById('modalListingsBody');
-      const subtitle = document.getElementById('listingsCountSubtitle');
-      tbody.innerHTML = `<tr><td colspan="4" class="empty-state" style="padding:1.5rem;">Loading active copies...</td></tr>`;
+    async function renderListings(itemId) {
+      const tbody = document.getElementById('listingsRows');
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:1rem;">Querying active copies...</td></tr>`;
 
-      const { data: listings, error } = await db
+      const { data: listings } = await db
         .from('active_listings')
         .select('*')
         .eq('item_id', itemId)
         .order('price', { ascending: true });
 
-      if (error || !listings || listings.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="empty-state" style="padding:1.5rem;">No active resale copies currently listed.</td></tr>`;
-        subtitle.textContent = '0 available';
+      if (!listings || listings.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-dim); padding:1rem;">No active resale listings logged.</td></tr>`;
         return;
       }
 
-      subtitle.textContent = `${listings.length} available`;
       tbody.innerHTML = listings.map(l => `
         <tr>
-          <td><span class="serial-tag">#${l.serial || 'N/A'}</span></td>
-          <td class="price-num floor-price">${l.price ? l.price.toLocaleString() : '0'} Tokens</td>
-          <td style="font-weight:600; color:#fff;">${escapeHtml(l.seller_name || 'Anonymous')}</td>
-          <td style="color:var(--text-muted); font-size:0.85rem;">
-            ${l.created_at ? new Date(l.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Unknown'}
+          <td style="color:var(--roli-gold); font-weight:700;">#${l.serial || '—'}</td>
+          <td style="color:var(--roli-green); font-weight:700;">${l.price ? l.price.toLocaleString() : '0'}</td>
+          <td style="color:#fff;">${escapeHtml(l.seller_name || 'Anonymous')}</td>
+          <td style="color:var(--text-muted); font-size:0.75rem;">
+            ${l.created_at ? new Date(l.created_at).toLocaleDateString([], { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'}
           </td>
         </tr>
       `).join('');
     }
 
     function closeModal() {
-      document.getElementById('itemModal').classList.remove('active');
+      document.getElementById('dossierModal').classList.remove('open');
     }
 
-    document.getElementById('itemModal').addEventListener('click', (e) => {
-      if (e.target.id === 'itemModal') closeModal();
+    document.getElementById('dossierModal').addEventListener('click', (e) => {
+      if (e.target.id === 'dossierModal') closeModal();
     });
 
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    document.querySelectorAll('.filter-tab').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
         activeFilter = e.target.dataset.filter;
-        renderTable();
+        renderCards();
       });
     });
 
-    document.getElementById('searchInput').addEventListener('input', renderTable);
+    document.getElementById('filterInput').addEventListener('input', renderCards);
+    document.getElementById('sortSelect').addEventListener('change', renderCards);
 
     function escapeHtml(str) {
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    fetchCatalog();
+    loadCatalog();
   </script>
 </body>
 </html>
