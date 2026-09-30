@@ -241,28 +241,18 @@
       position: relative;
     }
 
-    .item-thumb {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      image-rendering: -webkit-optimize-contrast;
-      transition: transform 0.2s ease;
-    }
+    /* Clean standard thumbnail display */
+.item-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  transition: transform 0.2s ease;
+}
 
-    /* Balanced face zoom: visible head without full body */
-    .item-thumb.thumb-face {
-      object-fit: cover;
-      object-position: center 25%;
-      transform: scale(1.45);
-    }
-
-    tr:hover .item-thumb:not(.thumb-face) {
-      transform: scale(1.08);
-    }
-
-    tr:hover .item-thumb.thumb-face {
-      transform: scale(1.6);
-    }
+tr:hover .item-thumb {
+  transform: scale(1.08);
+}
 
     .item-info {
       display: flex;
