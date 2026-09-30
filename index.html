@@ -745,17 +745,18 @@
 
     async function loadCatalog() {
       try {
-        const { data, error } = await db
-          .from('items')
-          .select('*')
-          .order('id', { ascending: true });
+       // ✅ NEW (Uses the computed 24h rolling RAP from Supabase):
+const { data, error } = await db
+  .from('items')
+  .select('*')
+  .order('id', { ascending: true });
 
-        if (error) throw error;
+if (error) throw error;
 
-        catalogItems = (data || []).map(item => ({
-          ...item,
-          rap: item.best_price || item.original_price || 0
-        }));
+catalogItems = (data || []).map(item => ({
+  ...item,
+  rap: item.rap || item.best_price || item.original_price || 0
+}));
 
         updateKpiMetrics();
         renderCards();
