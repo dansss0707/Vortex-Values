@@ -24,7 +24,7 @@ const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 
 const START_ID = 1;
 const END_ID = 260;
-const BASE_DELAY_MS = 600; // Increased delay to stay under Vortex's rate ceiling
+const BASE_DELAY_MS = 600;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -79,7 +79,6 @@ async function loginAndGetCookies() {
   }
 }
 
-// Fetch with automatic retry and backoff on HTTP 429
 async function fetchItemDataWithRetry(itemId, maxRetries = 3) {
   const url = `https://playvortex.io/api/catalog/item/${itemId}`;
   const headers = {
@@ -92,7 +91,7 @@ async function fetchItemDataWithRetry(itemId, maxRetries = 3) {
     const response = await fetch(url, { headers });
 
     if (response.status === 429) {
-      const waitTime = attempt * 3500; // Wait 3.5s, 7s, etc.
+      const waitTime = attempt * 3500;
       console.warn(`[Rate Limited] 429 hit on item #${itemId}. Pausing ${waitTime}ms before retry (Attempt ${attempt}/${maxRetries})...`);
       await sleep(waitTime);
       continue;
@@ -129,15 +128,34 @@ async function runSync() {
     try {
       const data = await fetchItemDataWithRetry(id);
 
-      if (!data || !data.item) {
+      if (!data) {
         skipCount++;
         await sleep(BASE_DELAY_MS);
         continue;
       }
 
-      const item = data.item;
-      const listings = Array.isArray(data.listings) ? data.listings : [];
+      // Diagnostic logging for schema inspection
+      if (id === 1 || id === 243) {
+        console.log(`[DEBUG #${id} Keys]:`, Object.keys(data));
+        console.log(`[DEBUG #${id} Sample]:`, JSON.stringify(data).slice(0, 250));
+      }
 
+      // Support nested (data.item) or root-level item properties
+      const item = data.item || (data.name || data.id ? data : null);
+
+      if (!item) {
+        console.log(`[Warning] No identifiable item fields found for #${id}`);
+        skipCount++;
+        await sleep(BASE_DELAY_MS);
+        continue;
+      }
+
+      // Support nested or top-level listings array
+      const listings = Array.isArray(data.listings) 
+        ? data.listings 
+        : (Array.isArray(item.listings) ? item.listings : []);
+
+      // Calculate lowest active floor price
       let bestPrice = null;
       if (listings.length > 0) {
         const validPrices = listings
@@ -150,10 +168,10 @@ async function runSync() {
       }
 
       // 1. Upsert Catalog Metadata
-      await db
+      const { error: itemErr } = await db
         .from('items')
         .upsert({
-          id: item.id,
+          id: item.id || id,
           name: item.name,
           description: item.description || null,
           item_type: item.item_type || 'Item',
@@ -167,35 +185,46 @@ async function runSync() {
           updated_at: timestamp
         }, { onConflict: 'id' });
 
+      if (itemErr) {
+        console.error(`[Error] Failed to upsert #${id}:`, itemErr.message);
+      }
+
       // 2. Append Price Trend Record
-      await db
+      const { error: histErr } = await db
         .from('item_history')
         .insert({
-          item_id: item.id,
+          item_id: item.id || id,
           best_price: bestPrice,
           listing_count: listings.length,
           recorded_at: timestamp
         });
 
+      if (histErr) {
+        console.error(`[Error] Failed to record history for #${id}:`, histErr.message);
+      }
+
       // 3. Refresh Active Serial Copies
       await db
         .from('active_listings')
         .delete()
-        .eq('item_id', item.id);
+        .eq('item_id', item.id || id);
 
       if (listings.length > 0) {
         const rows = listings.map(l => ({
-          item_id: item.id,
+          item_id: item.id || id,
           serial: l.serial || null,
           price: l.price || 0,
           seller_name: l.seller_username || l.seller_name || 'Anonymous',
           created_at: timestamp
         }));
 
-        await db.from('active_listings').insert(rows);
+        const { error: listErr } = await db.from('active_listings').insert(rows);
+        if (listErr) {
+          console.error(`[Error] Failed to insert active listings for #${id}:`, listErr.message);
+        }
       }
 
-      console.log(`[Synced] #${id} - ${item.name} | Floor: ${bestPrice ?? 'None'} | Copies: ${listings.length}`);
+      console.log(`[Synced] #${item.id || id} - ${item.name} | Floor: ${bestPrice ?? 'None'} | Copies: ${listings.length}`);
       successCount++;
 
     } catch (err) {
