@@ -1,4 +1,4 @@
-name: Sync Vortex Catalog
+name: 30-Minute Catalog Sync
 
 on:
   schedule:
@@ -6,25 +6,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  scrape:
+  sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
 
-      - name: Install dependencies
-        working-directory: vortex-values
-        run: npm install @supabase/supabase-js dotenv
+      - name: Install Dependencies
+        run: npm install @supabase/supabase-js
 
       - name: Run Catalog Sync
-        working-directory: vortex-values
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           VORTEX_COOKIE: ${{ secrets.VORTEX_COOKIE }}
-        run: node src/sync.js
+        run: node sync.js
