@@ -18,10 +18,12 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
+        working-directory: vortex-values
         run: npm install @supabase/supabase-js dotenv
 
       - name: Run Catalog Sync
+        working-directory: vortex-values
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node sync.js
+        run: node src/sync.js
