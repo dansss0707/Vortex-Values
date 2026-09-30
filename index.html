@@ -174,7 +174,7 @@
       color: #fff;
     }
 
-    /* Values Table */
+    /* Table Container */
     .table-wrapper {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -246,8 +246,19 @@
       transition: transform 0.2s ease;
     }
 
-    tr:hover .item-thumb {
+    /* Face Zoom: Crop directly onto the avatar's head */
+    .item-thumb.thumb-face {
+      object-fit: cover;
+      object-position: center 18%;
+      transform: scale(2.2);
+    }
+
+    tr:hover .item-thumb:not(.thumb-face) {
       transform: scale(1.08);
+    }
+
+    tr:hover .item-thumb.thumb-face {
+      transform: scale(2.4);
     }
 
     .item-info {
@@ -329,6 +340,7 @@
   </header>
 
   <div class="container">
+    <!-- Quick Analytics -->
     <div class="metrics-grid">
       <div class="metric-card">
         <div class="metric-title">Tracked Items</div>
@@ -348,6 +360,7 @@
       </div>
     </div>
 
+    <!-- Search & Filters -->
     <div class="controls-panel">
       <div class="search-box">
         <svg viewBox="0 0 24 24">
@@ -363,6 +376,7 @@
       </div>
     </div>
 
+    <!-- Table -->
     <div class="table-wrapper">
       <table>
         <thead>
@@ -390,7 +404,7 @@
   </div>
 
   <script>
-    // Supabase credentials
+    // Live Supabase Project Config
     const SUPABASE_URL = 'https://rwuudgyyzlgxxmnqxqhe.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_j7xJC8QrTTMzSMAnDiQKpA_Ndi_qRRx';
 
@@ -473,6 +487,11 @@
 
       tbody.innerHTML = filtered.map(item => {
         const thumbUrl = `https://playvortex.io/api/catalog/thumbnail/${item.id}`;
+        
+        // Detect face/decal to crop out the body
+        const typeStr = (item.item_type || '').toLowerCase();
+        const isFace = typeStr.includes('face') || typeStr.includes('decal') || (item.id >= 39 && item.id <= 58);
+
         return `
           <tr>
             <td class="price-num" style="color: var(--text-muted); font-size: 0.85rem;">#${item.id}</td>
@@ -482,7 +501,7 @@
                   <img 
                     src="${thumbUrl}" 
                     alt="${escapeHtml(item.name)}" 
-                    class="item-thumb" 
+                    class="item-thumb ${isFace ? 'thumb-face' : ''}" 
                     loading="lazy"
                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
                   />
