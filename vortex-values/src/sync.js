@@ -24,7 +24,7 @@ const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 
 const START_ID = 1;
 const END_ID = 260;
-const DELAY_MS = 250;
+const BASE_DELAY_MS = 600; // Increased delay to stay under Vortex's rate ceiling
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -44,19 +44,15 @@ async function loginAndGetCookies() {
     console.log('[Auth] Navigating to login page...');
     await page.goto('https://playvortex.io/login', { waitUntil: 'networkidle2', timeout: 60000 });
 
-    // Fill in credentials
     console.log('[Auth] Entering credentials...');
     await page.waitForSelector('input[name="username"], input[type="text"], input[name="email"]', { timeout: 15000 });
     
-    // Type into username input
     const userInput = await page.$('input[name="username"], input[name="email"], input[type="text"]');
     await userInput.type(VORTEX_USERNAME, { delay: 30 });
 
-    // Type into password input
     const passInput = await page.$('input[name="password"], input[type="password"]');
     await passInput.type(VORTEX_PASSWORD, { delay: 30 });
 
-    // Submit form
     console.log('[Auth] Submitting login form...');
     const submitBtn = await page.$('button[type="submit"], input[type="submit"]');
     if (submitBtn) {
@@ -71,7 +67,6 @@ async function loginAndGetCookies() {
       ]);
     }
 
-    // Extract all cookies from the authenticated session
     const cookies = await page.cookies();
     if (!cookies || cookies.length === 0) {
       throw new Error('No cookies returned after login attempt.');
@@ -84,30 +79,41 @@ async function loginAndGetCookies() {
   }
 }
 
-async function fetchItemData(itemId) {
+// Fetch with automatic retry and backoff on HTTP 429
+async function fetchItemDataWithRetry(itemId, maxRetries = 3) {
   const url = `https://playvortex.io/api/catalog/item/${itemId}`;
-  
   const headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*',
     'Cookie': sessionCookieHeader
   };
 
-  const response = await fetch(url, { headers });
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, { headers });
 
-  if (response.status === 401) {
-    throw new Error('AUTH_EXPIRED');
+    if (response.status === 429) {
+      const waitTime = attempt * 3500; // Wait 3.5s, 7s, etc.
+      console.warn(`[Rate Limited] 429 hit on item #${itemId}. Pausing ${waitTime}ms before retry (Attempt ${attempt}/${maxRetries})...`);
+      await sleep(waitTime);
+      continue;
+    }
+
+    if (response.status === 401) {
+      throw new Error('AUTH_EXPIRED');
+    }
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP_${response.status}`);
+    }
+
+    return await response.json();
   }
 
-  if (response.status === 404) {
-    return null;
-  }
-
-  if (!response.ok) {
-    throw new Error(`HTTP_${response.status}`);
-  }
-
-  return await response.json();
+  throw new Error('HTTP_429_EXCEEDED_RETRIES');
 }
 
 async function runSync() {
@@ -121,11 +127,11 @@ async function runSync() {
 
   for (let id = START_ID; id <= END_ID; id++) {
     try {
-      const data = await fetchItemData(id);
+      const data = await fetchItemDataWithRetry(id);
 
       if (!data || !data.item) {
         skipCount++;
-        await sleep(DELAY_MS);
+        await sleep(BASE_DELAY_MS);
         continue;
       }
 
@@ -197,7 +203,7 @@ async function runSync() {
       skipCount++;
     }
 
-    await sleep(DELAY_MS);
+    await sleep(BASE_DELAY_MS);
   }
 
   console.log(`\n=== Sync Complete ===`);
