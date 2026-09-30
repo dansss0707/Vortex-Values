@@ -1,37 +1,97 @@
 import { createClient } from '@supabase/supabase-js';
+import puppeteer from 'puppeteer';
 
 // Environment credentials
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-const VORTEX_COOKIE = process.env.VORTEX_COOKIE || '';
+const VORTEX_USERNAME = process.env.VORTEX_USERNAME;
+const VORTEX_PASSWORD = process.env.VORTEX_PASSWORD;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   console.error('[FATAL] Missing Supabase environment variables.');
   process.exit(1);
 }
 
+if (!VORTEX_USERNAME || !VORTEX_PASSWORD) {
+  console.error('[FATAL] Missing VORTEX_USERNAME or VORTEX_PASSWORD in GitHub Secrets.');
+  process.exit(1);
+}
+
 const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-  auth: { persistSession: false }
+  auth: { persistSession: false },
+  realtime: { transport: null }
 });
 
-// Configure scan range
 const START_ID = 1;
 const END_ID = 260;
-const DELAY_MS = 250; // Polite delay between item requests
+const DELAY_MS = 250;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+let sessionCookieHeader = '';
+
+async function loginAndGetCookies() {
+  console.log('[Auth] Launching headless browser to authenticate...');
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+
+    console.log('[Auth] Navigating to login page...');
+    await page.goto('https://playvortex.io/login', { waitUntil: 'networkidle2', timeout: 60000 });
+
+    // Fill in credentials
+    console.log('[Auth] Entering credentials...');
+    await page.waitForSelector('input[name="username"], input[type="text"], input[name="email"]', { timeout: 15000 });
+    
+    // Type into username input
+    const userInput = await page.$('input[name="username"], input[name="email"], input[type="text"]');
+    await userInput.type(VORTEX_USERNAME, { delay: 30 });
+
+    // Type into password input
+    const passInput = await page.$('input[name="password"], input[type="password"]');
+    await passInput.type(VORTEX_PASSWORD, { delay: 30 });
+
+    // Submit form
+    console.log('[Auth] Submitting login form...');
+    const submitBtn = await page.$('button[type="submit"], input[type="submit"]');
+    if (submitBtn) {
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {}),
+        submitBtn.click()
+      ]);
+    } else {
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {}),
+        passInput.press('Enter')
+      ]);
+    }
+
+    // Extract all cookies from the authenticated session
+    const cookies = await page.cookies();
+    if (!cookies || cookies.length === 0) {
+      throw new Error('No cookies returned after login attempt.');
+    }
+
+    sessionCookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+    console.log(`[Auth] Authentication successful! Retrieved ${cookies.length} session cookies.`);
+  } finally {
+    await browser.close();
+  }
+}
 
 async function fetchItemData(itemId) {
   const url = `https://playvortex.io/api/catalog/item/${itemId}`;
   
   const headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Accept': 'application/json, text/plain, */*'
+    'Accept': 'application/json, text/plain, */*',
+    'Cookie': sessionCookieHeader
   };
-
-  if (VORTEX_COOKIE) {
-    headers['Cookie'] = VORTEX_COOKIE;
-  }
 
   const response = await fetch(url, { headers });
 
@@ -51,7 +111,9 @@ async function fetchItemData(itemId) {
 }
 
 async function runSync() {
-  console.log(`=== Starting Vortex Catalog Sync [IDs ${START_ID} - ${END_ID}] ===`);
+  await loginAndGetCookies();
+
+  console.log(`\n=== Starting Vortex Catalog Sync [IDs ${START_ID} - ${END_ID}] ===`);
   const timestamp = new Date().toISOString();
 
   let successCount = 0;
@@ -70,7 +132,6 @@ async function runSync() {
       const item = data.item;
       const listings = Array.isArray(data.listings) ? data.listings : [];
 
-      // Calculate lowest floor price among active listings
       let bestPrice = null;
       if (listings.length > 0) {
         const validPrices = listings
@@ -82,8 +143,8 @@ async function runSync() {
         }
       }
 
-      // 1. Upsert Item into Catalog Table
-      const { error: itemErr } = await db
+      // 1. Upsert Catalog Metadata
+      await db
         .from('items')
         .upsert({
           id: item.id,
@@ -100,12 +161,8 @@ async function runSync() {
           updated_at: timestamp
         }, { onConflict: 'id' });
 
-      if (itemErr) {
-        console.error(`[Error] Failed to upsert item #${id}:`, itemErr.message);
-      }
-
-      // 2. Insert Price History Point (Creates the Chart.js Trend Every 30 mins)
-      const { error: histErr } = await db
+      // 2. Append Price Trend Record
+      await db
         .from('item_history')
         .insert({
           item_id: item.id,
@@ -114,12 +171,7 @@ async function runSync() {
           recorded_at: timestamp
         });
 
-      if (histErr) {
-        console.error(`[Error] Failed to log history for #${id}:`, histErr.message);
-      }
-
-      // 3. Refresh Active Serial Copies for Item
-      // Purge stale listings first so removed/bought copies don't linger
+      // 3. Refresh Active Serial Copies
       await db
         .from('active_listings')
         .delete()
@@ -134,27 +186,15 @@ async function runSync() {
           created_at: timestamp
         }));
 
-        const { error: listErr } = await db
-          .from('active_listings')
-          .insert(rows);
-
-        if (listErr) {
-          console.error(`[Error] Failed to insert active listings for #${id}:`, listErr.message);
-        }
+        await db.from('active_listings').insert(rows);
       }
 
       console.log(`[Synced] #${id} - ${item.name} | Floor: ${bestPrice ?? 'None'} | Copies: ${listings.length}`);
       successCount++;
 
     } catch (err) {
-      if (err.message === 'AUTH_EXPIRED') {
-        console.error('\n🚨 [FATAL ERROR] 401 Unauthorized: Your VORTEX_COOKIE has expired.');
-        console.error('Please grab a fresh cookie from DevTools and update the GitHub Secret.\n');
-        process.exit(1);
-      } else {
-        console.warn(`[Skip] Item #${id}: ${err.message}`);
-        skipCount++;
-      }
+      console.warn(`[Skip] Item #${id}: ${err.message}`);
+      skipCount++;
     }
 
     await sleep(DELAY_MS);
