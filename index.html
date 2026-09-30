@@ -3,109 +3,522 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VortexValues - Item Catalog & Tracker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Vortex Values | Rolimon's Style Item Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --card-bg: #121824;
+      --card-border: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.2);
+      --gold: #f59e0b;
+      --green: #10b981;
+      --red: #ef4444;
+      --purple: #a855f7;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: rgba(18, 24, 36, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand span {
+      background: linear-gradient(135deg, #818cf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      width: 100%;
+    }
+
+    /* Stats Overview Bar */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .metric-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .metric-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .metric-val {
+      font-size: 1.6rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Controls Bar */
+    .controls-panel {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.75rem 1rem 0.75rem 2.5rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+
+    .search-box svg {
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      fill: var(--text-muted);
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover, .tab-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Values Table */
+    .table-wrapper {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow-x: auto;
+      box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background: #0d121c;
+      padding: 1rem 1.25rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--card-border);
+      user-select: none;
+      cursor: pointer;
+    }
+
+    th:hover {
+      color: var(--text);
+    }
+
+    td {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 0.95rem;
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .item-cell {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .item-avatar {
+      width: 44px;
+      height: 44px;
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .item-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .item-title {
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      width: fit-content;
+    }
+
+    .badge-limited {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: var(--gold);
+    }
+
+    .badge-standard {
+      background: rgba(148, 163, 184, 0.1);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      color: var(--text-muted);
+    }
+
+    .price-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+    }
+
+    .floor-price {
+      color: var(--green);
+    }
+
+    .empty-state {
+      padding: 4rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .footer {
+      margin-top: auto;
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--card-border);
+    }
+  </style>
 </head>
-<body class="bg-[#0f111a] text-slate-100 min-h-screen font-sans">
+<body>
 
-  <nav class="border-b border-slate-800 bg-[#161926] px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <span class="text-xl font-black tracking-wider text-indigo-400">VORTEX<span class="text-white">VALUES</span></span>
+  <header>
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+        <polyline points="2 17 12 22 22 17"></polyline>
+        <polyline points="2 12 12 17 22 12"></polyline>
+      </svg>
+      <div>Vortex <span>Values</span></div>
     </div>
-    <div class="text-xs text-slate-400">Powered by Supabase</div>
-  </nav>
+    <div style="font-size: 0.85rem; color: var(--text-muted);" id="statusBadge">Connecting...</div>
+  </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-8">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-      <h1 class="text-2xl font-bold">Limited Catalog</h1>
-      <input 
-        id="search" 
-        type="text" 
-        placeholder="Search item name..." 
-        class="bg-[#1b1e2e] border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-indigo-500 w-full md:w-64"
-      />
+  <div class="container">
+    <!-- Top KPI Metrics -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-title">Tracked Items</div>
+        <div class="metric-val" id="totalItemsCount">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Limited Items</div>
+        <div class="metric-val" style="color: var(--gold);" id="limitedCount">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Active Resale Listings</div>
+        <div class="metric-val" style="color: var(--purple);" id="listingsCount">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Sync Interval</div>
+        <div class="metric-val" style="font-size: 1.1rem; color: var(--green);">30 Mins Auto</div>
+      </div>
     </div>
 
-    <!-- Catalog Table -->
-    <div class="overflow-x-auto rounded-xl border border-slate-800 bg-[#141724]">
-      <table class="w-full text-left text-sm">
-        <thead class="bg-[#1b1f30] text-slate-400 border-b border-slate-800">
+    <!-- Filter & Search Controls -->
+    <div class="controls-panel">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24">
+          <path d="M10 2a8 8 0 105.29 14.09l4.31 4.3 1.41-1.41-4.3-4.31A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Search by name or ID (e.g. Traffic Cone, 243)..." />
+      </div>
+
+      <div class="filter-tabs">
+        <button class="tab-btn active" data-filter="all">All Items</button>
+        <button class="tab-btn" data-filter="limited">Limiteds Only</button>
+        <button class="tab-btn" data-filter="resellable">For Sale</button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrapper">
+      <table>
+        <thead>
           <tr>
-            <th class="p-4">Item</th>
-            <th class="p-4">Type</th>
-            <th class="p-4">Best Price</th>
-            <th class="p-4">Original Price</th>
-            <th class="p-4">Total Stock</th>
-            <th class="p-4">For Sale</th>
+            <th onclick="sortTable('id')">ID ⇕</th>
+            <th onclick="sortTable('name')">Item ⇕</th>
+            <th>Type</th>
+            <th onclick="sortTable('original_price')">Original Price ⇕</th>
+            <th onclick="sortTable('best_price')">Best Floor Price ⇕</th>
+            <th onclick="sortTable('listing_count')">Listings ⇕</th>
+            <th onclick="sortTable('stock')">Stock ⇕</th>
           </tr>
         </thead>
-        <tbody id="items-table-body" class="divide-y divide-slate-800">
+        <tbody id="catalogBody">
           <tr>
-            <td colspan="6" class="p-8 text-center text-slate-500">Loading catalog items...</td>
+            <td colspan="7" class="empty-state">Loading items from Supabase...</td>
           </tr>
         </tbody>
       </table>
     </div>
-  </main>
+  </div>
+
+  <div class="footer">
+    Data updated continuously via GitHub Actions sync daemon.
+  </div>
 
   <script>
-    // Public Anon configuration (safe for frontend)
-    // Public configuration
-    const SUPABASE_URL = "https://rwuudgyyzlgxxmnqxqhe.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_j7xJC8QrTTMzSMAnDiQKpA_Ndi_qRRx";
+    // -------------------------------------------------------------
+    // CONFIGURATION: Replace with your project details
+    // -------------------------------------------------------------
+    const SUPABASE_URL = 'https://YOUR_SUPABASE_PROJECT_ID.supabase.co';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_PUBLIC_KEY';
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    let allItems = [];
+    // Initialize client cleanly without global conflicts
+    const { createClient } = window.supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    async function fetchItems() {
-      const { data, error } = await supabase
-        .from('items')
-        .select('*')
-        .order('best_price', { ascending: true, nullsFirst: false });
+    let rawItems = [];
+    let activeFilter = 'all';
+    let currentSort = { column: 'id', asc: true };
 
-      if (error) {
-        console.error("Error loading items:", error);
-        return;
+    async function fetchCatalog() {
+      const statusBadge = document.getElementById('statusBadge');
+      statusBadge.textContent = 'Syncing...';
+
+      try {
+        const { data, error } = await db
+          .from('items')
+          .select('*')
+          .order('id', { ascending: true });
+
+        if (error) throw error;
+
+        rawItems = data || [];
+        statusBadge.textContent = '● Live';
+        statusBadge.style.color = 'var(--green)';
+
+        updateMetrics();
+        renderTable();
+      } catch (err) {
+        console.error('Supabase query error:', err);
+        statusBadge.textContent = '● Offline / Error';
+        statusBadge.style.color = 'var(--red)';
+        document.getElementById('catalogBody').innerHTML = `
+          <tr>
+            <td colspan="7" class="empty-state" style="color: var(--red);">
+              Failed to load items. Check your Supabase URL & Anon Key config.
+            </td>
+          </tr>
+        `;
       }
-
-      allItems = data || [];
-      renderTable(allItems);
     }
 
-    function renderTable(items) {
-      const tbody = document.getElementById('items-table-body');
-      if (items.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500">No items found.</td></tr>`;
+    function updateMetrics() {
+      document.getElementById('totalItemsCount').textContent = rawItems.length;
+      document.getElementById('limitedCount').textContent = rawItems.filter(i => i.limited).length;
+      
+      const totalListings = rawItems.reduce((acc, curr) => acc + (curr.listing_count || 0), 0);
+      document.getElementById('listingsCount').textContent = totalListings;
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('catalogBody');
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+
+      // 1. Filter
+      let filtered = rawItems.filter(item => {
+        const matchesQuery = item.name.toLowerCase().includes(query) || item.id.toString() === query;
+        if (!matchesQuery) return false;
+
+        if (activeFilter === 'limited') return Boolean(item.limited);
+        if (activeFilter === 'resellable') return (item.listing_count || 0) > 0;
+        return true;
+      });
+
+      // 2. Sort
+      filtered.sort((a, b) => {
+        let valA = a[currentSort.column] ?? 0;
+        let valB = b[currentSort.column] ?? 0;
+
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+
+        if (valA < valB) return currentSort.asc ? -1 : 1;
+        if (valA > valB) return currentSort.asc ? 1 : -1;
+        return 0;
+      });
+
+      // 3. Render
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No matching items found.</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = items.map(item => `
-        <tr class="hover:bg-[#1a1e30] transition-colors">
-          <td class="p-4 font-semibold text-white flex items-center gap-2">
-            <span class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded">#${item.id}</span>
-            <a href="https://playvortex.io/catalog/${item.id}" target="_blank" class="hover:underline text-indigo-400">
-              ${item.name}
-            </a>
+      tbody.innerHTML = filtered.map(item => `
+        <tr>
+          <td class="price-num" style="color: var(--text-muted); font-size: 0.85rem;">#${item.id}</td>
+          <td>
+            <div class="item-cell">
+              <div class="item-avatar">${item.id}</div>
+              <div class="item-info">
+                <div class="item-title">${escapeHtml(item.name)}</div>
+                <div>
+                  ${item.limited 
+                    ? '<span class="badge badge-limited">Limited</span>' 
+                    : '<span class="badge badge-standard">Standard</span>'}
+                </div>
+              </div>
+            </div>
           </td>
-          <td class="p-4 capitalize text-slate-300">${item.item_type || 'Item'}</td>
-          <td class="p-4 font-bold ${item.best_price ? 'text-amber-400' : 'text-slate-500'}">
-            ${item.best_price ? item.best_price.toLocaleString() : 'No Sellers'}
+          <td><span style="color: var(--text-muted);">${escapeHtml(item.item_type || 'Item')}</span></td>
+          <td class="price-num">${item.original_price ? item.original_price.toLocaleString() : 'Free / N/A'}</td>
+          <td class="price-num floor-price">
+            ${item.best_price ? `${item.best_price.toLocaleString()} Tokens` : '<span style="color: var(--text-muted);">-</span>'}
           </td>
-          <td class="p-4 text-slate-400">${item.original_price?.toLocaleString() || '0'}</td>
-          <td class="p-4 text-slate-400">${item.total_stock || 'N/A'}</td>
-          <td class="p-4 text-slate-300">${item.listing_count}</td>
+          <td class="price-num">${item.listing_count || 0}</td>
+          <td class="price-num">${item.stock || (item.total_stock || '∞')}</td>
         </tr>
       `).join('');
     }
 
-    document.getElementById('search').addEventListener('input', (e) => {
-      const query = e.target.value.toLowerCase();
-      const filtered = allItems.filter(i => i.name.toLowerCase().includes(query));
-      renderTable(filtered);
+    function sortTable(column) {
+      if (currentSort.column === column) {
+        currentSort.asc = !currentSort.asc;
+      } else {
+        currentSort.column = column;
+        currentSort.asc = true;
+      }
+      renderTable();
+    }
+
+    // Filter event listeners
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        activeFilter = e.target.dataset.filter;
+        renderTable();
+      });
     });
 
-    fetchItems();
+    document.getElementById('searchInput').addEventListener('input', renderTable);
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Launch
+    fetchCatalog();
   </script>
 </body>
 </html>
