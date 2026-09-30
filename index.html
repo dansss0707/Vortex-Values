@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vortex Values | Item Catalog & Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -67,16 +68,16 @@
     }
 
     .container {
-      max-width: 1400px;
+      max-width: 1440px;
       margin: 0 auto;
       padding: 2rem 1.5rem;
       width: 100%;
     }
 
-    /* Stats Overview Bar */
+    /* KPI Grid */
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
       margin-bottom: 2rem;
     }
@@ -98,12 +99,12 @@
     }
 
     .metric-val {
-      font-size: 1.6rem;
+      font-size: 1.5rem;
       font-weight: 800;
       font-family: 'JetBrains Mono', monospace;
     }
 
-    /* Controls Bar */
+    /* Controls */
     .controls-panel {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -174,7 +175,7 @@
       color: #fff;
     }
 
-    /* Table Container */
+    /* Table */
     .table-wrapper {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -200,6 +201,7 @@
       border-bottom: 1px solid var(--card-border);
       user-select: none;
       cursor: pointer;
+      white-space: nowrap;
     }
 
     th:hover {
@@ -211,6 +213,7 @@
       border-bottom: 1px solid rgba(255, 255, 255, 0.04);
       font-size: 0.95rem;
       vertical-align: middle;
+      white-space: nowrap;
     }
 
     tr:hover td {
@@ -221,9 +224,9 @@
       display: flex;
       align-items: center;
       gap: 1rem;
+      cursor: pointer;
     }
 
-    /* Thumbnail styling */
     .item-thumb-wrapper {
       width: 52px;
       height: 52px;
@@ -246,11 +249,11 @@
       transition: transform 0.2s ease;
     }
 
-    /* Face Zoom: Crop directly onto the avatar's head */
+    /* Balanced face zoom: visible head without full body */
     .item-thumb.thumb-face {
       object-fit: cover;
-      object-position: center 18%;
-      transform: scale(2.2);
+      object-position: center 25%;
+      transform: scale(1.45);
     }
 
     tr:hover .item-thumb:not(.thumb-face) {
@@ -258,7 +261,7 @@
     }
 
     tr:hover .item-thumb.thumb-face {
-      transform: scale(2.4);
+      transform: scale(1.6);
     }
 
     .item-info {
@@ -270,10 +273,10 @@
     .item-title {
       font-weight: 700;
       color: #fff;
-      text-decoration: none;
+      transition: color 0.15s;
     }
 
-    .item-title:hover {
+    .item-cell:hover .item-title {
       color: #818cf8;
     }
 
@@ -309,10 +312,110 @@
       color: var(--green);
     }
 
+    .rap-price {
+      color: var(--purple);
+    }
+
     .empty-state {
       padding: 4rem 2rem;
       text-align: center;
       color: var(--text-muted);
+    }
+
+    /* Modal / Item Analytics View */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 820px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+      position: relative;
+      padding: 2rem;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1.25rem;
+      right: 1.25rem;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0.25rem 0.5rem;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+    }
+
+    .modal-header {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .modal-thumb {
+      width: 80px;
+      height: 80px;
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .modal-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .modal-thumb img.thumb-face {
+      object-fit: cover;
+      object-position: center 25%;
+      transform: scale(1.45);
+    }
+
+    .modal-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 320px;
+      width: 100%;
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1rem;
     }
 
     .footer {
@@ -340,7 +443,7 @@
   </header>
 
   <div class="container">
-    <!-- Quick Analytics -->
+    <!-- Top Stats -->
     <div class="metrics-grid">
       <div class="metric-card">
         <div class="metric-title">Tracked Items</div>
@@ -351,16 +454,16 @@
         <div class="metric-val" style="color: var(--gold);" id="limitedCount">-</div>
       </div>
       <div class="metric-card">
-        <div class="metric-title">Active Resale Listings</div>
-        <div class="metric-val" style="color: var(--purple);" id="listingsCount">-</div>
+        <div class="metric-title">Market RAP</div>
+        <div class="metric-val" style="color: var(--purple);" id="totalRap">-</div>
       </div>
       <div class="metric-card">
-        <div class="metric-title">Sync Interval</div>
-        <div class="metric-val" style="font-size: 1.1rem; color: var(--green);">30 Mins Auto</div>
+        <div class="metric-title">Active Listings</div>
+        <div class="metric-val" style="color: var(--green);" id="listingsCount">-</div>
       </div>
     </div>
 
-    <!-- Search & Filters -->
+    <!-- Filter and Search -->
     <div class="controls-panel">
       <div class="search-box">
         <svg viewBox="0 0 24 24">
@@ -376,7 +479,7 @@
       </div>
     </div>
 
-    <!-- Table -->
+    <!-- Catalog Table -->
     <div class="table-wrapper">
       <table>
         <thead>
@@ -384,18 +487,62 @@
             <th onclick="sortTable('id')">ID ⇕</th>
             <th onclick="sortTable('name')">Item ⇕</th>
             <th>Type</th>
-            <th onclick="sortTable('original_price')">Original Price ⇕</th>
+            <th onclick="sortTable('rap')">RAP ⇕</th>
             <th onclick="sortTable('best_price')">Best Floor Price ⇕</th>
+            <th onclick="sortTable('original_price')">Orig. Price ⇕</th>
             <th onclick="sortTable('listing_count')">Listings ⇕</th>
             <th onclick="sortTable('stock')">Stock ⇕</th>
           </tr>
         </thead>
         <tbody id="catalogBody">
           <tr>
-            <td colspan="7" class="empty-state">Loading items from Supabase...</td>
+            <td colspan="8" class="empty-state">Loading items from Supabase...</td>
           </tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Detail & Price History Modal -->
+  <div class="modal-overlay" id="itemModal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      
+      <div class="modal-header">
+        <div class="modal-thumb" id="modalThumbWrapper"></div>
+        <div>
+          <h2 id="modalItemTitle" style="font-size: 1.6rem; margin-bottom: 0.3rem;">-</h2>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span id="modalItemBadge" class="badge"></span>
+            <span id="modalItemType" style="color: var(--text-muted); font-size: 0.85rem;"></span>
+            <a id="modalItemLink" href="#" target="_blank" rel="noopener" style="color: var(--accent); font-size: 0.85rem; text-decoration: none; margin-left: 0.5rem;">View on Vortex ↗</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-stats">
+        <div class="metric-card">
+          <div class="metric-title">Recent Avg Price (RAP)</div>
+          <div class="metric-val rap-price" id="modalRap">-</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Lowest Floor Price</div>
+          <div class="metric-val floor-price" id="modalFloor">-</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Original Price</div>
+          <div class="metric-val" id="modalOriginal">-</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Active Listings</div>
+          <div class="metric-val" id="modalListings">-</div>
+        </div>
+      </div>
+
+      <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Price & Floor History</h3>
+      <div class="chart-container">
+        <canvas id="priceHistoryChart"></canvas>
+      </div>
     </div>
   </div>
 
@@ -404,7 +551,6 @@
   </div>
 
   <script>
-    // Live Supabase Project Config
     const SUPABASE_URL = 'https://rwuudgyyzlgxxmnqxqhe.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_j7xJC8QrTTMzSMAnDiQKpA_Ndi_qRRx';
 
@@ -414,6 +560,7 @@
     let rawItems = [];
     let activeFilter = 'all';
     let currentSort = { column: 'id', asc: true };
+    let chartInstance = null;
 
     async function fetchCatalog() {
       const statusBadge = document.getElementById('statusBadge');
@@ -427,7 +574,12 @@
 
         if (error) throw error;
 
-        rawItems = data || [];
+        // Calculate initial RAP: floor price if present, else original price
+        rawItems = (data || []).map(item => ({
+          ...item,
+          rap: item.best_price || item.original_price || 0
+        }));
+
         statusBadge.textContent = '● Live';
         statusBadge.style.color = 'var(--green)';
 
@@ -439,7 +591,7 @@
         statusBadge.style.color = 'var(--red)';
         document.getElementById('catalogBody').innerHTML = `
           <tr>
-            <td colspan="7" class="empty-state" style="color: var(--red);">
+            <td colspan="8" class="empty-state" style="color: var(--red);">
               Failed to load items. Check database connection.
             </td>
           </tr>
@@ -451,8 +603,16 @@
       document.getElementById('totalItemsCount').textContent = rawItems.length;
       document.getElementById('limitedCount').textContent = rawItems.filter(i => i.limited).length;
       
+      const totalRap = rawItems.reduce((sum, item) => sum + (item.rap || 0), 0);
+      document.getElementById('totalRap').textContent = totalRap.toLocaleString();
+
       const totalListings = rawItems.reduce((acc, curr) => acc + (curr.listing_count || 0), 0);
       document.getElementById('listingsCount').textContent = totalListings;
+    }
+
+    function isFaceItem(item) {
+      const typeStr = (item.item_type || '').toLowerCase();
+      return typeStr.includes('face') || typeStr.includes('decal') || (item.id >= 39 && item.id <= 58);
     }
 
     function renderTable() {
@@ -481,27 +641,24 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No matching items found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No matching items found.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = filtered.map(item => {
         const thumbUrl = `https://playvortex.io/api/catalog/thumbnail/${item.id}`;
-        
-        // Detect face/decal to crop out the body
-        const typeStr = (item.item_type || '').toLowerCase();
-        const isFace = typeStr.includes('face') || typeStr.includes('decal') || (item.id >= 39 && item.id <= 58);
+        const faceClass = isFaceItem(item) ? 'thumb-face' : '';
 
         return `
           <tr>
             <td class="price-num" style="color: var(--text-muted); font-size: 0.85rem;">#${item.id}</td>
             <td>
-              <div class="item-cell">
+              <div class="item-cell" onclick="openItemModal(${item.id})">
                 <div class="item-thumb-wrapper">
                   <img 
                     src="${thumbUrl}" 
                     alt="${escapeHtml(item.name)}" 
-                    class="item-thumb ${isFace ? 'thumb-face' : ''}" 
+                    class="item-thumb ${faceClass}" 
                     loading="lazy"
                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
                   />
@@ -510,9 +667,7 @@
                   </div>
                 </div>
                 <div class="item-info">
-                  <a href="https://playvortex.io/catalog/${item.id}" target="_blank" rel="noopener" class="item-title">
-                    ${escapeHtml(item.name)}
-                  </a>
+                  <span class="item-title">${escapeHtml(item.name)}</span>
                   <div>
                     ${item.limited 
                       ? '<span class="badge badge-limited">Limited</span>' 
@@ -522,10 +677,11 @@
               </div>
             </td>
             <td><span style="color: var(--text-muted);">${escapeHtml(item.item_type || 'Item')}</span></td>
-            <td class="price-num">${item.original_price ? item.original_price.toLocaleString() : 'Free / N/A'}</td>
+            <td class="price-num rap-price">${item.rap ? item.rap.toLocaleString() : '-'}</td>
             <td class="price-num floor-price">
-              ${item.best_price ? `${item.best_price.toLocaleString()} Tokens` : '<span style="color: var(--text-muted);">-</span>'}
+              ${item.best_price ? `${item.best_price.toLocaleString()}` : '<span style="color: var(--text-muted);">-</span>'}
             </td>
+            <td class="price-num">${item.original_price ? item.original_price.toLocaleString() : 'N/A'}</td>
             <td class="price-num">${item.listing_count || 0}</td>
             <td class="price-num">${item.stock || (item.total_stock || '∞')}</td>
           </tr>
@@ -542,6 +698,111 @@
       }
       renderTable();
     }
+
+    /* Modal & Chart.js logic */
+    async function openItemModal(itemId) {
+      const item = rawItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      const thumbUrl = `https://playvortex.io/api/catalog/thumbnail/${item.id}`;
+      const faceClass = isFaceItem(item) ? 'thumb-face' : '';
+
+      document.getElementById('modalItemTitle').textContent = item.name;
+      document.getElementById('modalItemType').textContent = item.item_type || 'Item';
+      document.getElementById('modalItemLink').href = `https://playvortex.io/catalog/${item.id}`;
+
+      const badge = document.getElementById('modalItemBadge');
+      badge.textContent = item.limited ? 'Limited' : 'Standard';
+      badge.className = `badge ${item.limited ? 'badge-limited' : 'badge-standard'}`;
+
+      document.getElementById('modalThumbWrapper').innerHTML = `
+        <img src="${thumbUrl}" alt="${escapeHtml(item.name)}" class="${faceClass}" />
+      `;
+
+      document.getElementById('modalRap').textContent = item.rap ? `${item.rap.toLocaleString()}` : '-';
+      document.getElementById('modalFloor').textContent = item.best_price ? `${item.best_price.toLocaleString()}` : 'None';
+      document.getElementById('modalOriginal').textContent = item.original_price ? `${item.original_price.toLocaleString()}` : 'N/A';
+      document.getElementById('modalListings').textContent = item.listing_count || 0;
+
+      document.getElementById('itemModal').classList.add('active');
+
+      // Fetch history points from Supabase
+      const { data: historyData } = await db
+        .from('item_history')
+        .select('*')
+        .eq('item_id', item.id)
+        .order('recorded_at', { ascending: true });
+
+      renderPriceChart(historyData || [], item);
+    }
+
+    function renderPriceChart(history, item) {
+      const ctx = document.getElementById('priceHistoryChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+
+      let labels = [];
+      let prices = [];
+
+      if (history.length > 0) {
+        labels = history.map(h => new Date(h.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }));
+        prices = history.map(h => h.best_price);
+      } else {
+        // Fallback single baseline point if only 1 sync recorded yet
+        labels = ['Initial Sync', 'Current'];
+        prices = [item.best_price || item.original_price || 0, item.best_price || item.original_price || 0];
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Floor Price (Tokens)',
+            data: prices,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+            fill: true,
+            tension: 0.35,
+            borderWidth: 2,
+            pointBackgroundColor: '#818cf8',
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#121824',
+              borderColor: '#1e293b',
+              borderWidth: 1,
+              titleColor: '#f8fafc',
+              bodyColor: '#94a3b8'
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 } }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    function closeModal() {
+      document.getElementById('itemModal').classList.remove('active');
+    }
+
+    // Close modal on background click
+    document.getElementById('itemModal').addEventListener('click', (e) => {
+      if (e.target.id === 'itemModal') closeModal();
+    });
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
