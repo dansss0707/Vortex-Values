@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VortexValues - Item Catalog & Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-[#0f111a] text-slate-100 min-h-screen font-sans">
+
+  <nav class="border-b border-slate-800 bg-[#161926] px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="text-xl font-black tracking-wider text-indigo-400">VORTEX<span class="text-white">VALUES</span></span>
+    </div>
+    <div class="text-xs text-slate-400">Powered by Supabase</div>
+  </nav>
+
+  <main class="max-w-6xl mx-auto px-4 py-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <h1 class="text-2xl font-bold">Limited Catalog</h1>
+      <input 
+        id="search" 
+        type="text" 
+        placeholder="Search item name..." 
+        class="bg-[#1b1e2e] border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-indigo-500 w-full md:w-64"
+      />
+    </div>
+
+    <!-- Catalog Table -->
+    <div class="overflow-x-auto rounded-xl border border-slate-800 bg-[#141724]">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-[#1b1f30] text-slate-400 border-b border-slate-800">
+          <tr>
+            <th class="p-4">Item</th>
+            <th class="p-4">Type</th>
+            <th class="p-4">Best Price</th>
+            <th class="p-4">Original Price</th>
+            <th class="p-4">Total Stock</th>
+            <th class="p-4">For Sale</th>
+          </tr>
+        </thead>
+        <tbody id="items-table-body" class="divide-y divide-slate-800">
+          <tr>
+            <td colspan="6" class="p-8 text-center text-slate-500">Loading catalog items...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    // Public Anon configuration (safe for frontend)
+    const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+    const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let allItems = [];
+
+    async function fetchItems() {
+      const { data, error } = await supabase
+        .from('items')
+        .select('*')
+        .order('best_price', { ascending: true, nullsFirst: false });
+
+      if (error) {
+        console.error("Error loading items:", error);
+        return;
+      }
+
+      allItems = data || [];
+      renderTable(allItems);
+    }
+
+    function renderTable(items) {
+      const tbody = document.getElementById('items-table-body');
+      if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500">No items found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = items.map(item => `
+        <tr class="hover:bg-[#1a1e30] transition-colors">
+          <td class="p-4 font-semibold text-white flex items-center gap-2">
+            <span class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded">#${item.id}</span>
+            <a href="https://playvortex.io/catalog/${item.id}" target="_blank" class="hover:underline text-indigo-400">
+              ${item.name}
+            </a>
+          </td>
+          <td class="p-4 capitalize text-slate-300">${item.item_type || 'Item'}</td>
+          <td class="p-4 font-bold ${item.best_price ? 'text-amber-400' : 'text-slate-500'}">
+            ${item.best_price ? item.best_price.toLocaleString() : 'No Sellers'}
+          </td>
+          <td class="p-4 text-slate-400">${item.original_price?.toLocaleString() || '0'}</td>
+          <td class="p-4 text-slate-400">${item.total_stock || 'N/A'}</td>
+          <td class="p-4 text-slate-300">${item.listing_count}</td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('search').addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      const filtered = allItems.filter(i => i.name.toLowerCase().includes(query));
+      renderTable(filtered);
+    });
+
+    fetchItems();
+  </script>
+</body>
+</html>
